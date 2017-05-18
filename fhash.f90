@@ -22,7 +22,7 @@ module fhash_module__/**/SHORTNAME
 
   type nodes_type
     type(kv_type), allocatable :: kv
-    type(nodes_type), pointer :: next => null()
+    type(nodes_type), allocatable :: next
   end type
 
   type fhash_type__/**/SHORTNAME
@@ -90,12 +90,18 @@ module fhash_module__/**/SHORTNAME
     class(fhash_type__/**/SHORTNAME), intent(inout) :: this
     KEY_TYPE, intent(in) :: key
     VALUE_TYPE, intent(in) :: value
+    type(nodes_type), pointer :: bucket_ptr
     integer :: bucket_id
 
     bucket_id = modulo(hash_value(key), this%n_buckets)
-    allocate(this%buckets(bucket_id)%kv)
-    this%buckets(bucket_id)%kv%key = key
-    this%buckets(bucket_id)%kv%value = value
+    print *, bucket_id
+
+
+    bucket_ptr => this%buckets(bucket_id)
+    allocate(bucket_ptr%kv)
+
+    bucket_ptr%kv%key = key
+    bucket_ptr%kv%value = value
     this%n_keys = this%n_keys + 1
   end subroutine
 
