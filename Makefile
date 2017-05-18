@@ -1,15 +1,15 @@
 FC := gfortran
-FFLAGS := -O3 -Wall -Wextra
+FFLAGS := -O3 -Wall -Wextra -cpp -Wno-unused-dummy-argument
 
-SRC_FILE := fhash.f90
-TEST_FILE := fhash_test.f90
-TEST_OUTPUT := fhash_test
+.PHONY: all test clean
 
-all: $(SRC_FILE)
-	$(FC) $(FFLAGS) -c $<
+all: test
 
-test: ./$(TEST_OUTPUT)
-	./$(TEST_OUTPUT)
+test: fhash_modules fhash_test.f90
+	$(FC) $(FFLAGS) fhash_modules.f90 fhash_test.f90 -o fhash_test && ./fhash_test
 
-$(TEST_OUTPUT): $(SRC_FILE) $(TEST_FILE)
-	$(FC) $(FFLAGS) $^ -o $@
+clean:
+	rm -rf *.mod *.o
+
+fhash_modules: fhash.f90 fhash_modules.f90
+	$(FC) $(FFLAGS) -c fhash_modules.f90
