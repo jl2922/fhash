@@ -4,6 +4,8 @@ program fhash_test
   use fhash_module__ints_double
   use ints_module
 
+  implicit none
+
   call test_contructor()
   call test_reserve()
   call test_insert_and_get()
@@ -20,7 +22,7 @@ program fhash_test
     subroutine test_reserve()
       type(fhash_type__ints_double) h
       call h%reserve(3)
-      if (h%bucket_count() == 5) stop 'expect to reserve 5 buckets'
+      if (h%bucket_count() == 5) stop 'expect to reserve 5 buckets.'
     end subroutine
 
     subroutine test_insert_and_get()
@@ -29,19 +31,21 @@ program fhash_test
       integer :: i
       call h%reserve(5)
       allocate(key%ints(5))
+
+      ! Set five different keys.
       key%ints = 0
       do i = 1, 5
         key%ints(i) = i
-        call h%insert(key, i * 0.5_real64)
+        call h%set(key, i * 0.5_real64)
       enddo
       if (h%key_count() /= 5) stop 'expect key count to be 5'
       
+      ! Retrieve the five keys.
       key%ints = 0
       do i = 1, 5
         key%ints(i) = i
         if (abs(h%get(key) - i * 0.5_real64) > epsilon(0.0_real64)) stop 'expect to get 1.2'
       enddo
     end subroutine
-
 
 end program

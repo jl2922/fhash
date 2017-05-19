@@ -1,3 +1,6 @@
+! Hash table implementation imitating to GCC STL.
+! DO NOT COMPILE THIS TEMPLATE FILE DIRECTLY.
+! Use a wrapper module and include this file instead, e.g. fhash_modules.f90.
 module fhash_module__/**/SHORTNAME
 
 #ifdef KEY_USE
@@ -20,9 +23,12 @@ module fhash_module__/**/SHORTNAME
     VALUE_TYPE :: value
   end type
 
-  type nodes_type
+  type node_type
     type(kv_type), allocatable :: kv
-    type(nodes_type), allocatable :: next
+    type(node_type), pointer :: next => null()
+    contains
+      procedure :: node_set
+      procedure :: node_get
   end type
 
   type fhash_type__/**/SHORTNAME
@@ -30,7 +36,7 @@ module fhash_module__/**/SHORTNAME
 
     integer :: n_buckets = 0
     integer :: n_keys = 0
-    type(nodes_type), allocatable :: buckets(:)
+    type(node_type), allocatable :: buckets(:)
 
     contains
       ! Returns the number of buckets.
@@ -42,8 +48,8 @@ module fhash_module__/**/SHORTNAME
       ! Returns number of keys.
       procedure, public :: key_count
 
-      ! Insert a new key value pair.
-      procedure, public :: insert
+      ! Set the value at a given a key.
+      procedure, public :: set
 
       ! Get the value at the given key.
       procedure, public :: get
@@ -86,23 +92,39 @@ module fhash_module__/**/SHORTNAME
     key_count = this%n_keys
   end function
 
-  subroutine insert(this, key, value)
+  subroutine set(this, key, value)
     class(fhash_type__/**/SHORTNAME), intent(inout) :: this
     KEY_TYPE, intent(in) :: key
     VALUE_TYPE, intent(in) :: value
-    type(nodes_type), pointer :: bucket_ptr
     integer :: bucket_id
+    logical :: is_new
 
     bucket_id = modulo(hash_value(key), this%n_buckets)
     print *, bucket_id
 
+    call this%buckets(bucket_id)%node_set(key, value, is_new)
 
-    bucket_ptr => this%buckets(bucket_id)
-    allocate(bucket_ptr%kv)
+    if (is_new) this%n_keys = this%n_keys + 1
+  end subroutine
 
-    bucket_ptr%kv%key = key
-    bucket_ptr%kv%value = value
-    this%n_keys = this%n_keys + 1
+  recursive subroutine node_set(this, key, value, is_new)
+    class(node_type), intent(inout) :: this
+    KEY_TYPE, intent(in) :: key
+    VALUE_TYPE, intent(in) :: value
+    logical, optional, intent(out) :: is_new
+
+    if (.not. allocated(this%kv)) then
+      allocate(this%kv)
+      this%kv%key = key
+      this%kv%value = value
+      if (present(is_new)) is_new = .true.
+    else if (this%kv%key == key) then
+      this%kv%value = value
+      if (present(is_new)) is_new = .false.
+    else
+      if (.not. associated(this%next)) allocate(this%next)
+      call this%next%node_set(key, value, is_new)
+    endif
   end subroutine
 
   function get(this, key, success) result(value)
@@ -113,14 +135,27 @@ module fhash_module__/**/SHORTNAME
     integer :: bucket_id
 
     bucket_id = modulo(hash_value(key), this%n_buckets)
-    if (.not. allocated(this%buckets(bucket_id)%kv)) then
-      if (present(success)) success = .false.
-      value = 0
-      return
-    endif
+    value = this%buckets(bucket_id)%node_get(key, success)
+  end function
 
-    value = this%buckets(bucket_id)%kv%value
-    if (present(success)) success = .true.
+  recursive function node_get(this, key, success) result(value)
+    class(node_type), intent(inout) :: this
+    KEY_TYPE, intent(in) :: key
+    logical, optional, intent(out) :: success
+    VALUE_TYPE :: value
+
+    value = 0
+    if (.not. allocated(this%kv)) then
+      ! Not found. (Initial node in the bucket not set)
+      if (present(success)) success = .false.
+    else if (this%kv%key == key) then
+      value = this%kv%value
+      if (present(success)) success = .true.
+    else if (associated(this%next)) then
+      value = this%next%node_get(key, success)
+    else
+      if (present(success)) success = .false.
+    endif
   end function
 
 end module
