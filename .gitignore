@@ -1,5 +1,7 @@
 fhash_test.dSYM
 fhash_test
+.vscode/
+ref.out
 
 # Prerequisites
 *.d
