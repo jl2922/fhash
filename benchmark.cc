@@ -5,8 +5,8 @@
 #include <unordered_map>
 #include <vector>
 
-#define N_INTS 14
-#define N_KEYS 10000000
+#define N_INTS 2
+#define N_KEYS 20000000
 
 void benchmark() {
   typedef std::vector<int> KeyType;

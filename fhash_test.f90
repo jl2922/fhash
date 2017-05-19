@@ -13,10 +13,11 @@ program fhash_test
   call test_insert_and_get()
 
   print *, 'ALL TESTS PASSED.'
+  print *, 'Start benchmark:'
 
   ! Benchmark
   call cpu_time(start)
-  call benchmark(14, 10000000)
+  call benchmark(2, 20000000)
   call cpu_time(finish)
   print '("Time finish = ", G0.3," seconds.")', finish - start
 
@@ -38,24 +39,20 @@ program fhash_test
       type(ints_type) :: key
       real(real64) :: value
       integer :: i
+      logical :: success
       call h%reserve(10)
       allocate(key%ints(10))
 
-      ! Set five different keys.
       key%ints = 0
       do i = 1, 10
         key%ints(i) = i
+        call h%get(key, value, success)
+        if (success) stop 'expect not found'
         call h%set(key, i * 0.5_real64)
+        call h%get(key, value)
+        if (abs(value - i * 0.5_real64) > epsilon(value)) stop 'expect to get 0.5 i'
       enddo
       if (h%key_count() /= 10) stop 'expect key count to be 10'
-      
-      ! Retrieve the five keys.
-      key%ints = 0
-      do i = 1, 10
-        key%ints(i) = i
-        call h%get(key, value)
-        if (abs(value - i * 0.5_real64) > epsilon(value)) stop 'expect to get 1.2'
-      enddo
 
       call h%clear()
       if (h%key_count() /= 0) stop 'expect no keys'
