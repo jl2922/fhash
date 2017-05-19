@@ -1,6 +1,8 @@
-! Hash table implementation imitating to GCC STL.
+! Hash table implementation imitating to GCC STL (with singly linked list).
 ! DO NOT COMPILE THIS TEMPLATE FILE DIRECTLY.
 ! Use a wrapper module and include this file instead, e.g. fhash_modules.f90.
+! Remove is not implemented since not needed currently.
+
 module fhash_module__/**/SHORTNAME
 
 #ifdef KEY_USE
@@ -26,9 +28,23 @@ module fhash_module__/**/SHORTNAME
   type node_type
     type(kv_type), allocatable :: kv
     type(node_type), pointer :: next => null()
+
     contains
+      ! If kv is not allocated, allocate and set to the key, value passed in.
+      ! If key is present and the same as the key passed in, overwrite the value.
+      ! Otherwise, defer to the next node (allocate if not allocated)
       procedure :: node_set
+
+      ! If kv is not allocated, fail and return 0.
+      ! If key is present and the same as the key passed in, return the value in kv.
+      ! If next pointer is associated, delegate to it.
+      ! Otherwise, fail and return 0.
       procedure :: node_get
+
+      ! Deallocate kv is allocated.
+      ! Call the clear method of the next node if the next pointer associated.
+      ! Deallocate and nullify the next pointer.
+      procedure :: node_clear
   end type
 
   type fhash_type__/**/SHORTNAME
@@ -53,6 +69,9 @@ module fhash_module__/**/SHORTNAME
 
       ! Get the value at the given key.
       procedure, public :: get
+
+      ! Clear all the allocated memory (must be called to prevent memory leak).
+      procedure, public :: clear
   end type
 
   contains
@@ -80,7 +99,7 @@ module fhash_module__/**/SHORTNAME
       if (sizes(i) >= n_buckets) then
         this%n_buckets = n_buckets
         allocate(this%buckets(this%n_buckets))
-        exit
+        return
       endif
     enddo
   end subroutine
@@ -99,8 +118,7 @@ module fhash_module__/**/SHORTNAME
     integer :: bucket_id
     logical :: is_new
 
-    bucket_id = modulo(hash_value(key), this%n_buckets)
-    print *, bucket_id
+    bucket_id = modulo(hash_value(key), this%n_buckets) + 1
 
     call this%buckets(bucket_id)%node_set(key, value, is_new)
 
@@ -127,24 +145,23 @@ module fhash_module__/**/SHORTNAME
     endif
   end subroutine
 
-  function get(this, key, success) result(value)
+  subroutine get(this, key, value, success)
     class(fhash_type__/**/SHORTNAME), intent(inout) :: this
     KEY_TYPE, intent(in) :: key
+    VALUE_TYPE, intent(out) :: value
     logical, optional, intent(out) :: success
-    VALUE_TYPE :: value
     integer :: bucket_id
 
-    bucket_id = modulo(hash_value(key), this%n_buckets)
-    value = this%buckets(bucket_id)%node_get(key, success)
-  end function
+    bucket_id = modulo(hash_value(key), this%n_buckets) + 1
+    call this%buckets(bucket_id)%node_get(key, value, success)
+  end subroutine
 
-  recursive function node_get(this, key, success) result(value)
+  recursive subroutine node_get(this, key, value, success)
     class(node_type), intent(inout) :: this
     KEY_TYPE, intent(in) :: key
+    VALUE_TYPE, intent(out) :: value
     logical, optional, intent(out) :: success
-    VALUE_TYPE :: value
 
-    value = 0
     if (.not. allocated(this%kv)) then
       ! Not found. (Initial node in the bucket not set)
       if (present(success)) success = .false.
@@ -152,11 +169,36 @@ module fhash_module__/**/SHORTNAME
       value = this%kv%value
       if (present(success)) success = .true.
     else if (associated(this%next)) then
-      value = this%next%node_get(key, success)
+      call this%next%node_get(key, value, success)
     else
       if (present(success)) success = .false.
     endif
-  end function
+  end subroutine
+
+  subroutine clear(this)
+    class(fhash_type__/**/SHORTNAME), intent(inout) :: this
+    integer :: i
+
+    if (.not. allocated(this%buckets)) return
+
+    do i = 1, size(this%buckets)
+      call this%buckets(i)%node_clear()
+    enddo
+    deallocate(this%buckets)
+    this%n_keys = 0
+    this%n_buckets = 0
+  end subroutine
+
+  recursive subroutine node_clear(this)
+    class(node_type), intent(inout) :: this
+
+    if (allocated(this%kv)) deallocate(this%kv)
+    if (associated(this%next)) then
+      call this%next%node_clear()
+      deallocate(this%next)
+      nullify(this%next)
+    endif
+  end subroutine
 
 end module
 
