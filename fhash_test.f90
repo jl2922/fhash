@@ -13,6 +13,8 @@ program fhash_test
   call test_insert_and_get()
 
   print *, 'ALL TESTS PASSED.'
+
+  ! Benchmark
   call cpu_time(start)
   call benchmark(14, 10000000)
   call cpu_time(finish)
@@ -81,7 +83,6 @@ program fhash_test
       call cpu_time(finish)
       print '("Time insert = ", G0.3," seconds.")', finish - start
       call h%clear()
-      call cpu_time(finish)
     end subroutine
 
 end program

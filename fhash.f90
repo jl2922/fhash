@@ -192,7 +192,6 @@ module fhash_module__/**/SHORTNAME
   recursive subroutine node_clear(this)
     class(node_type), intent(inout) :: this
 
-    if (allocated(this%kv)) deallocate(this%kv)
     if (associated(this%next)) then
       call this%next%node_clear()
       deallocate(this%next)
