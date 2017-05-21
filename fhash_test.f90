@@ -31,7 +31,7 @@ program fhash_test
     subroutine test_reserve()
       type(fhash_type__ints_double) h
       call h%reserve(3)
-      if (h%bucket_count() == 5) stop 'expect to reserve 5 buckets'
+      if (h%bucket_count() /= 5) stop 'expect to reserve 5 buckets'
     end subroutine
 
     subroutine test_insert_and_get()

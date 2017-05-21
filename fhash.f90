@@ -97,7 +97,7 @@ module fhash_module__/**/SHORTNAME
       & 573292817, 1164186217, 2147483647/)
     do i = 1, size(sizes)
       if (sizes(i) >= n_buckets) then
-        this%n_buckets = n_buckets
+        this%n_buckets = sizes(i)
         allocate(this%buckets(this%n_buckets))
         return
       endif
