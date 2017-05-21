@@ -182,7 +182,10 @@ module fhash_module__/**/SHORTNAME
     if (.not. allocated(this%buckets)) return
 
     do i = 1, size(this%buckets)
-      call this%buckets(i)%node_clear()
+      if (associated(this%buckets(i)%next)) then 
+        call this%buckets(i)%next%node_clear()
+        deallocate(this%buckets(i)%next)
+      endif
     enddo
     deallocate(this%buckets)
     this%n_keys = 0
