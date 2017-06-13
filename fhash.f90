@@ -19,6 +19,7 @@ module fhash_module__/**/SHORTNAME
   private
 
   public :: fhash_type__/**/SHORTNAME
+  public :: fhash_type_iterator__/**/SHORTNAME
 
   type kv_type
     KEY_TYPE :: key
@@ -72,6 +73,21 @@ module fhash_module__/**/SHORTNAME
 
       ! Clear all the allocated memory (must be called to prevent memory leak).
       procedure, public :: clear
+  end type
+
+  type fhash_type_iterator__/**/SHORTNAME
+    private
+
+    integer :: bucket_id = 0
+    type(node_type), pointer :: node_ptr => null()
+    type(fhash_type__/**/SHORTNAME), pointer :: fhash_ptr => null()
+
+    contains
+      ! Set the iterator to the beginning of a hash table.
+      procedure, public :: begin
+
+      ! Get the key value of the next element and advance the iterator.
+      procedure, public :: next
   end type
 
   contains
@@ -200,6 +216,38 @@ module fhash_module__/**/SHORTNAME
       deallocate(this%next)
       nullify(this%next)
     endif
+  end subroutine
+
+  subroutine begin(this, fhash_target)
+    class(fhash_type_iterator__/**/SHORTNAME), intent(inout) :: this
+    type(fhash_type__/**/SHORTNAME), target, intent(in) :: fhash_target
+
+    this%bucket_id = 0
+    this%node_ptr => fhash_target%buckets(0)
+    this%fhash_ptr => fhash_target
+  end subroutine
+
+  subroutine next(this, key, value, status)
+    class(fhash_type_iterator__/**/SHORTNAME), intent(inout) :: this
+    KEY_TYPE, intent(out) :: key
+    VALUE_TYPE, intent(out) :: value
+    integer, optional, intent(out) :: status
+
+    do while (.not. associated(this%node_ptr) .or. .not. allocated(this%node_ptr%kv))
+      if (this%bucket_id < this%fhash_ptr%key_count()) then
+        this%bucket_id = this%bucket_id + 1
+        this%node_ptr => this%fhash_ptr%buckets(this%bucket_id)
+      else
+        status = -1
+        return
+      endif
+    enddo
+
+    key = this%node_ptr%kv%key
+    value = this%node_ptr%kv%value
+    status = 0
+    this%node_ptr => this%node_ptr%next
+
   end subroutine
 
 end module
