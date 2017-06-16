@@ -46,6 +46,9 @@ module fhash_module__/**/SHORTNAME
       ! Call the clear method of the next node if the next pointer associated.
       ! Deallocate and nullify the next pointer.
       procedure :: node_clear
+
+      ! Return the length of the linked list start from the current node.
+      procedure :: node_depth
   end type
 
   type fhash_type__/**/SHORTNAME
@@ -58,6 +61,9 @@ module fhash_module__/**/SHORTNAME
     contains
       ! Returns the number of buckets.
       procedure, public :: bucket_count
+
+      ! Return the number of collisions.
+      procedure, public :: n_collisions
 
       ! Reserve certain number of buckets.
       procedure, public :: reserve
@@ -97,6 +103,28 @@ module fhash_module__/**/SHORTNAME
     integer :: bucket_count
 
     bucket_count = this%n_buckets
+  end function
+
+  function n_collisions(this)
+    class(fhash_type__/**/SHORTNAME), intent(inout) :: this
+    integer :: n_collisions
+    integer :: i
+
+    n_collisions = 0
+    do i = 1, this%n_buckets
+      n_collisions = n_collisions + node_depth(this%buckets(i)) - 1
+    enddo
+  end function
+
+  recursive function node_depth(this) result(depth)
+    class(node_type), intent(inout) :: this
+    integer :: depth
+
+    if (.not. associated(this%next)) then
+      depth = 1
+    else
+      depth = 1 + node_depth(this%next)
+    endif
   end function
 
   subroutine reserve(this, n_buckets)

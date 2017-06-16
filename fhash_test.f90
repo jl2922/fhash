@@ -41,7 +41,7 @@ program fhash_test
     real(real64) :: value
     integer :: i
     logical :: success
-    call h%reserve(10)
+    call h%reserve(5)
     allocate(key%ints(10))
 
     key%ints = 0
@@ -54,6 +54,7 @@ program fhash_test
       if (abs(value - i * 0.5_real64) > epsilon(value)) stop 'expect to get 0.5 i'
     enddo
     if (h%key_count() /= 10) stop 'expect key count to be 10'
+    if (h%n_collisions() >= 10 .or. h%n_collisions() < 5) stop 'expect n_collisions in [5, 10)'
 
     call h%clear()
     if (h%key_count() /= 0) stop 'expect no keys'
