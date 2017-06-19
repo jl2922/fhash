@@ -84,7 +84,7 @@ module fhash_module__/**/SHORTNAME
   type fhash_type_iterator__/**/SHORTNAME
     private
 
-    integer :: bucket_id = 0
+    integer :: bucket_id
     type(node_type), pointer :: node_ptr => null()
     type(fhash_type__/**/SHORTNAME), pointer :: fhash_ptr => null()
 
@@ -262,18 +262,18 @@ module fhash_module__/**/SHORTNAME
     integer, optional, intent(out) :: status
 
     do while (.not. associated(this%node_ptr) .or. .not. allocated(this%node_ptr%kv))
-      if (this%bucket_id < this%fhash_ptr%key_count()) then
+      if (this%bucket_id < this%fhash_ptr%n_buckets) then
         this%bucket_id = this%bucket_id + 1
         this%node_ptr => this%fhash_ptr%buckets(this%bucket_id)
       else
-        status = -1
+        if (present(status)) status = -1
         return
       endif
     enddo
 
     key = this%node_ptr%kv%key
     value = this%node_ptr%kv%value
-    status = 0
+    if (present(status)) status = 0
     this%node_ptr => this%node_ptr%next
 
   end subroutine
