@@ -250,8 +250,8 @@ module fhash_module__/**/SHORTNAME
     class(fhash_type_iterator__/**/SHORTNAME), intent(inout) :: this
     type(fhash_type__/**/SHORTNAME), target, intent(in) :: fhash_target
 
-    this%bucket_id = 0
-    this%node_ptr => fhash_target%buckets(0)
+    this%bucket_id = 1 
+    this%node_ptr => fhash_target%buckets(1)
     this%fhash_ptr => fhash_target
   end subroutine
 
