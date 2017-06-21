@@ -1,4 +1,4 @@
-fhash_test.dSYM
+*.dSYM
 fhash_test
 .vscode/
 ref.out
