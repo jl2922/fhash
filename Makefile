@@ -1,5 +1,5 @@
 FC := gfortran
-FFLAGS := -O3 -g -Wall -Wextra -cpp -Wno-unused-dummy-argument
+FFLAGS := -O3 -g -fbounds-check -Wall -Wextra -cpp -Wno-unused-dummy-argument
 
 .PHONY: all test clean ref
 
