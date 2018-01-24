@@ -16,6 +16,10 @@ module ints_module
     module procedure ints_equal
   end interface
 
+  interface assignment (=)
+    module procedure ints_ptr_assign
+  end interface 
+
   contains
 
     function hash_value_ints(ints) result(hash)
@@ -49,6 +53,12 @@ module ints_module
       ints_equal = .true.
 
     end function
+      
+    subroutine ints_ptr_assign(lhs, rhs)
+      type(ints_type), pointer, intent(inout) :: lhs
+      type(ints_type), pointer, intent(in) :: rhs
+      lhs => rhs
+    end subroutine
 
 end module ints_module
 
@@ -58,4 +68,29 @@ end module ints_module
 #define KEY_USE use ints_module
 #define VALUE_USE use, intrinsic :: iso_fortran_env
 #define SHORTNAME ints_double
+#include "fhash.f90"
+
+module int_module
+  implicit none
+
+  interface hash_value
+    module procedure hash_value_int
+  end interface
+
+  contains
+
+    function hash_value_int(int) result(hash)
+      integer, intent(in) :: int
+      integer :: hash
+      
+      hash = int
+    end function
+end module
+
+! Define the macros needed by fhash and include fhash.f90
+#define KEY_TYPE integer
+#define VALUE_TYPE type(ints_type), pointer
+#define KEY_USE use int_module
+#define VALUE_USE use ints_module
+#define SHORTNAME int_ints_ptr
 #include "fhash.f90"

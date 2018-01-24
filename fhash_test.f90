@@ -2,6 +2,7 @@ program fhash_test
 
   use, intrinsic :: iso_fortran_env
   use fhash_module__ints_double
+  use fhash_module__int_ints_ptr
   use ints_module
 
   implicit none
@@ -10,7 +11,8 @@ program fhash_test
 
   call test_contructor()
   call test_reserve()
-  call test_insert_and_get()
+  call test_insert_and_get_ints_double()
+  call test_insert_and_get_int_ints_ptr()
   call test_iterate()
 
   print *, 'ALL TESTS PASSED.'
@@ -35,7 +37,7 @@ program fhash_test
     if (h%bucket_count() /= 5) stop 'expect to reserve 5 buckets'
   end subroutine
 
-  subroutine test_insert_and_get()
+  subroutine test_insert_and_get_ints_double()
     type(fhash_type__ints_double) :: h
     type(ints_type) :: key
     real(real64) :: value
@@ -59,6 +61,24 @@ program fhash_test
     call h%clear()
     if (h%key_count() /= 0) stop 'expect no keys'
     if (h%bucket_count() /= 0) stop 'expect no buckets'
+  end subroutine
+
+  subroutine test_insert_and_get_int_ints_ptr()
+    type(fhash_type__int_ints_ptr) :: h
+    type(ints_type), target :: value
+    type(ints_type), pointer :: value_ptr, value_ptr2, value_ptr3
+    logical :: success
+    call h%reserve(5)
+    allocate(value%ints(10))
+    value%ints = 0
+    value_ptr => value
+    call h%set(0, value_ptr)
+    call h%get(0, value_ptr2, success)
+    if (value_ptr2%ints(1) /= 0) stop 'expect ints(1) to be 0'
+    value_ptr2%ints(1) = 1
+
+    call h%get(0, value_ptr3, success)
+    if (value_ptr3%ints(1) /= 1) stop 'expect ints(1) to be 1'
   end subroutine
 
   subroutine test_iterate()
