@@ -14,6 +14,7 @@ program fhash_test
   call test_reserve()
   call test_insert_and_get_ints_double()
   call test_insert_and_get_int_ints_ptr()
+  call test_insert_get_and_remove_int_ints_ptr()
   call test_iterate()
 
   print *, 'ALL TESTS PASSED.'
@@ -88,6 +89,83 @@ program fhash_test
     if (value_ptr3%ints(1) /= 1) stop 'expect ints(1) to be 1'
   end subroutine
 
+  subroutine test_insert_get_and_remove_int_ints_ptr()
+    type(fhash_type__int_ints_ptr) :: h
+    integer, parameter ::  num_values = 50
+    type(ints_type), pointer :: pValues(:), pValue
+    logical :: success
+    integer ::  i, key, status
+    type(fhash_type_iterator__int_ints_ptr) :: it
+    
+    ! prepare
+    allocate(pValues(num_values))
+    
+    ! create
+    call h%reserve(5)
+    
+    ! add
+    do i = 1, num_values
+      pValue => pValues(i)
+      allocate(pValue%ints(2))
+      pValue%ints(1) = i
+      call h%set(i, pValue)
+    end do
+    
+    if (h%key_count() .ne. num_values) stop 'expect different key count'
+
+    ! get
+    do i = num_values, i, -1
+      nullify(pValue)
+      call h%get(i, pValue, success)
+      if (.not. success) stop 'expect a value for given key '
+      if (pValue%ints(1) .ne. pValues(i)%ints(1)) stop 'expect different value for given key'
+    end do
+    
+    ! remove first item
+    do i = 1, num_values
+      if (mod(i, 5) .eq. 1) then
+        call h%remove(i, success)
+        if (.not. success) stop 'expect to successfully remove item with given key '
+      endif
+    end do
+    if (h%key_count() .ne. num_values-10) stop 'expect different key count'
+
+    ! remove first item (fail)
+    do i = 1, num_values
+      if (mod(i, 5) .eq. 1) then
+        call h%remove(i, success)
+        if (success) stop 'expect that remove item with given key fails'
+      endif
+    end do
+    if (h%key_count() .ne. num_values-10) stop 'expect  different key count'
+
+    ! remove middle item
+    do i = 1, num_values
+      if (mod(i, 5) .eq. 4) then
+        call h%remove(i, success)
+        if (.not. success) stop 'expect to successfully remove item with given key '
+      endif
+    end do
+    if (h%key_count() .ne. num_values-20) stop 'expect different key count'
+
+    nullify (pValue)
+
+    ! Setup iterator.
+    call it%begin(h)
+    do while (.true.)
+      call it%next(key, pValue, status)
+      if (status /= 0) exit
+      if (key .ne. pValue%ints(1)) stop 'expect to retrieve matching key value pair'
+      if (mod(key, 5) .eq. 1) stop 'expect not to get deleted keys'
+      if (mod(key, 5) .eq. 4) stop 'expect not to get deleted keys'
+    end do
+    
+    if (associated(pValue)) stop 'expect .not. associated(pValue)'
+    
+    deallocate(pValues)
+    
+  end subroutine  
+  
   subroutine test_iterate()
     type(fhash_type__ints_double) :: h
     type(fhash_type_iterator__ints_double) :: it
