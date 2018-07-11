@@ -1,9 +1,67 @@
+#ifdef __DO_NOT_PREPROCESS_DOC__
 ! Hash table implementation imitating to GCC STL (with singly linked list).
 ! DO NOT COMPILE THIS TEMPLATE FILE DIRECTLY.
 ! Use a wrapper module and include this file instead, e.g. fhash_modules.f90.
 ! Remove is not implemented since not needed currently.
+!  
+! #define                         | meaning
+! --------------------------------+-----------------------------------------------------
+! SHORTNAME <Name>                | (optional) The name of the type this FHASH table is 
+!                                 | for. If set, it overrides all settings that have 
+!                                 | have possibly been made for FHASH_MODULE_NAME,
+!                                 | FHASH_TYPE_NAME and FHASH_TYPE_ITERATOR_NAME.
+!                                 |
+! FHASH_MODULE_NAME <Name>        | The name of the module that encapsulates the FHASH
+!                                 | types and functionality
+! FHASH_TYPE_NAME <Name>          | The name of the actual FHASH type 
+! FHASH_TYPE_ITERATOR_NAME <Name> | The name of the FHASH type that can iterate through
+!                                 | the whole FHASH
+!                                 |
+! KEY_USE <use stmt>              | (optional) A use statement that is required to use
+!                                 | a specific type as a key for the FHASH
+! KEY_TYPE <typename>             | The type of the keys. May require KEY_USE to be
+!                                 | accessible.
+!                                 |
+! VALUE_USE <use stmt>            | (optional) A use statement that is required to use
+!                                 | a specific type as a value for the FHASH
+! VALUE_TYPE <typename>           | The type of the values. May require VALUE_USE to be
+!                                 | accessible.
+!                                 |
+! VALUE_VALUE                     | Flag indicating that the values in FHASH are value
+!                                 | values. This is the default. (see VALUE_POINTER)
+! VALUE_POINTER                   | Flag indicating that the values in FHASH are value
+!                                 | pointers.
+! VALUE_ASSIGNMENT                | (internal) The assignment operator, do not set it 
+!                                 | anywhere, it is configured based on VALUE_VALUE or
+!                                 | VALUE_POINTER
+#endif
 
-#ifndef VALUE_ASSIGNMENT
+#ifdef SHORTNAME
+#undef FHASH_MODULE_NAME
+#undef FHASH_TYPE_NAME
+#undef FHASH_TYPE_ITERATOR_NAME
+
+#ifdef __GFORTRAN__
+#define PASTE(a) a
+#define CONCAT(a,b) PASTE(a)b
+#else
+#define PASTE(a,b) a ## b
+#define CONCAT(a,b) PASTE(a,b)
+#endif
+#define FHASH_MODULE_NAME CONCAT(fhash_module__,SHORTNAME)
+#define FHASH_TYPE_NAME CONCAT(fhash_type__,SHORTNAME)
+#define FHASH_TYPE_ITERATOR_NAME CONCAT(fhash_type_iterator__,SHORTNAME)
+#endif
+  
+#undef VALUE_ASSIGNMENT
+#ifndef VALUE_VALUE
+#ifndef VALUE_POINTER
+#define VALUE_VALUE
+#endif
+  
+#ifdef VALUE_POINTER
+#define VALUE_ASSIGNMENT =>
+#else
 #define VALUE_ASSIGNMENT =
 #endif
   
@@ -290,3 +348,6 @@ end module
 #undef FHASH_TYPE_NAME
 #undef FHASH_TYPE_ITERATOR_NAME
 #undef VALUE_ASSIGNMENT
+#undef SHORTNAME
+#undef CONCAT
+#undef PASTE

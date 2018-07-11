@@ -8,6 +8,7 @@ program fhash_test
   implicit none
 
   real :: start, finish
+  integer :: numKeys
 
   call test_contructor()
   call test_reserve()
@@ -19,8 +20,14 @@ program fhash_test
   print *, 'Start benchmark:'
 
   ! Benchmark
+  numKeys = 10000000
+#ifdef __GFORTRAN__
+  if (__SIZEOF_POINTER__ == 8) numKeys = numKeys * 2
+#else
+  if (int_ptr_kind() == 8) numKeys = numKeys * 2
+#endif
   call cpu_time(start)
-  call benchmark(2, 20000000)
+  call benchmark(2, numKeys)
   call cpu_time(finish)
   print '("Time finish = ", G0.3," seconds.")', finish - start
 
