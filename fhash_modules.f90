@@ -98,6 +98,6 @@ end module
 #define VALUE_USE use ints_module
 #define SHORTNAME int_ints_ptr
 #ifndef __GFORTRAN__
-#define VALUE_ASSIGNMENT =>
+#define VALUE_POINTER
 #endif
 #include "fhash.f90"
