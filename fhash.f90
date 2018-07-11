@@ -58,7 +58,8 @@
 #ifndef VALUE_POINTER
 #define VALUE_VALUE
 #endif
-  
+#endif
+
 #ifdef VALUE_POINTER
 #define VALUE_ASSIGNMENT =>
 #else
