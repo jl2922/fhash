@@ -16,10 +16,12 @@ module ints_module
     module procedure ints_equal
   end interface
 
+#ifdef __GFORTRAN__
   interface assignment (=)
     module procedure ints_ptr_assign
   end interface 
-
+#endif
+  
   contains
 
     function hash_value_ints(ints) result(hash)
@@ -53,12 +55,14 @@ module ints_module
       ints_equal = .true.
 
     end function
-      
+
+#ifdef __GFORTRAN__
     subroutine ints_ptr_assign(lhs, rhs)
       type(ints_type), pointer, intent(inout) :: lhs
       type(ints_type), pointer, intent(in) :: rhs
       lhs => rhs
     end subroutine
+#endif
 
 end module ints_module
 
@@ -82,7 +86,7 @@ module int_module
     function hash_value_int(int) result(hash)
       integer, intent(in) :: int
       integer :: hash
-      
+
       hash = int
     end function
 end module
@@ -93,4 +97,7 @@ end module
 #define KEY_USE use int_module
 #define VALUE_USE use ints_module
 #define SHORTNAME int_ints_ptr
+#ifndef __GFORTRAN__
+#define VALUE_POINTER
+#endif
 #include "fhash.f90"

@@ -1,9 +1,73 @@
+#ifdef __DO_NOT_PREPROCESS_DOC__
 ! Hash table implementation imitating to GCC STL (with singly linked list).
 ! DO NOT COMPILE THIS TEMPLATE FILE DIRECTLY.
 ! Use a wrapper module and include this file instead, e.g. fhash_modules.f90.
 ! Remove is not implemented since not needed currently.
+!  
+! #define                         | meaning
+! --------------------------------+-----------------------------------------------------
+! SHORTNAME <Name>                | (optional) The name of the type this FHASH table is 
+!                                 | for. If set, it overrides all settings that have 
+!                                 | have possibly been made for FHASH_MODULE_NAME,
+!                                 | FHASH_TYPE_NAME and FHASH_TYPE_ITERATOR_NAME.
+!                                 |
+! FHASH_MODULE_NAME <Name>        | The name of the module that encapsulates the FHASH
+!                                 | types and functionality
+! FHASH_TYPE_NAME <Name>          | The name of the actual FHASH type 
+! FHASH_TYPE_ITERATOR_NAME <Name> | The name of the FHASH type that can iterate through
+!                                 | the whole FHASH
+!                                 |
+! KEY_USE <use stmt>              | (optional) A use statement that is required to use
+!                                 | a specific type as a key for the FHASH
+! KEY_TYPE <typename>             | The type of the keys. May require KEY_USE to be
+!                                 | accessible.
+!                                 |
+! VALUE_USE <use stmt>            | (optional) A use statement that is required to use
+!                                 | a specific type as a value for the FHASH
+! VALUE_TYPE <typename>           | The type of the values. May require VALUE_USE to be
+!                                 | accessible.
+!                                 |
+! VALUE_VALUE                     | Flag indicating that the values in FHASH are value
+!                                 | values. This is the default. (see VALUE_POINTER)
+! VALUE_POINTER                   | Flag indicating that the values in FHASH are value
+!                                 | pointers.
+! VALUE_ASSIGNMENT                | (internal) The assignment operator, do not set it 
+!                                 | anywhere, it is configured based on VALUE_VALUE or
+!                                 | VALUE_POINTER
+#endif
 
-module fhash_module__/**/SHORTNAME
+#ifdef SHORTNAME
+#undef FHASH_MODULE_NAME
+#undef FHASH_TYPE_NAME
+#undef FHASH_TYPE_ITERATOR_NAME
+
+#ifdef __GFORTRAN__
+#define PASTE(a) a
+#define CONCAT(a,b) PASTE(a)b
+#else
+#define PASTE(a,b) a ## b
+#define CONCAT(a,b) PASTE(a,b)
+#endif
+#define FHASH_MODULE_NAME CONCAT(fhash_module__,SHORTNAME)
+#define FHASH_TYPE_NAME CONCAT(fhash_type__,SHORTNAME)
+#define FHASH_TYPE_ITERATOR_NAME CONCAT(fhash_type_iterator__,SHORTNAME)
+#endif
+  
+#undef VALUE_ASSIGNMENT
+#ifndef VALUE_VALUE
+#ifndef VALUE_POINTER
+#define VALUE_VALUE
+#endif
+#endif
+
+#ifdef VALUE_POINTER
+#define VALUE_ASSIGNMENT =>
+#else
+#define VALUE_ASSIGNMENT =
+#endif
+  
+module FHASH_MODULE_NAME
+#undef FHASH_MODULE_NAME
 
 #ifdef KEY_USE
   KEY_USE
@@ -18,8 +82,8 @@ module fhash_module__/**/SHORTNAME
 
   private
 
-  public :: fhash_type__/**/SHORTNAME
-  public :: fhash_type_iterator__/**/SHORTNAME
+  public :: FHASH_TYPE_NAME
+  public :: FHASH_TYPE_ITERATOR_NAME
 
   type kv_type
     KEY_TYPE :: key
@@ -51,7 +115,7 @@ module fhash_module__/**/SHORTNAME
       procedure :: node_depth
   end type
 
-  type fhash_type__/**/SHORTNAME
+  type FHASH_TYPE_NAME
     private
 
     integer :: n_buckets = 0
@@ -81,12 +145,12 @@ module fhash_module__/**/SHORTNAME
       procedure, public :: clear
   end type
 
-  type fhash_type_iterator__/**/SHORTNAME
+  type FHASH_TYPE_ITERATOR_NAME
     private
 
     integer :: bucket_id
     type(node_type), pointer :: node_ptr => null()
-    type(fhash_type__/**/SHORTNAME), pointer :: fhash_ptr => null()
+    type(FHASH_TYPE_NAME), pointer :: fhash_ptr => null()
 
     contains
       ! Set the iterator to the beginning of a hash table.
@@ -99,14 +163,14 @@ module fhash_module__/**/SHORTNAME
   contains
 
   function bucket_count(this)
-    class(fhash_type__/**/SHORTNAME), intent(inout) :: this
+    class(FHASH_TYPE_NAME), intent(inout) :: this
     integer :: bucket_count
 
     bucket_count = this%n_buckets
   end function
 
   function n_collisions(this)
-    class(fhash_type__/**/SHORTNAME), intent(inout) :: this
+    class(FHASH_TYPE_NAME), intent(inout) :: this
     integer :: n_collisions
     integer :: i
 
@@ -128,7 +192,7 @@ module fhash_module__/**/SHORTNAME
   end function
 
   subroutine reserve(this, n_buckets)
-    class(fhash_type__/**/SHORTNAME), intent(inout) :: this
+    class(FHASH_TYPE_NAME), intent(inout) :: this
     integer, intent(in) :: n_buckets
     integer, dimension(29) :: sizes
     integer :: i
@@ -149,14 +213,14 @@ module fhash_module__/**/SHORTNAME
   end subroutine
 
   function key_count(this)
-    class(fhash_type__/**/SHORTNAME), intent(inout) :: this
+    class(FHASH_TYPE_NAME), intent(inout) :: this
     integer :: key_count
 
     key_count = this%n_keys
   end function
 
   subroutine set(this, key, value)
-    class(fhash_type__/**/SHORTNAME), intent(inout) :: this
+    class(FHASH_TYPE_NAME), intent(inout) :: this
     KEY_TYPE, intent(in) :: key
     VALUE_TYPE, intent(in) :: value
     integer :: bucket_id
@@ -178,10 +242,10 @@ module fhash_module__/**/SHORTNAME
     if (.not. allocated(this%kv)) then
       allocate(this%kv)
       this%kv%key = key
-      this%kv%value = value
+      this%kv%value VALUE_ASSIGNMENT value
       if (present(is_new)) is_new = .true.
     else if (this%kv%key == key) then
-      this%kv%value = value
+      this%kv%value VALUE_ASSIGNMENT value
       if (present(is_new)) is_new = .false.
     else
       if (.not. associated(this%next)) allocate(this%next)
@@ -190,7 +254,7 @@ module fhash_module__/**/SHORTNAME
   end subroutine
 
   subroutine get(this, key, value, success)
-    class(fhash_type__/**/SHORTNAME), intent(inout) :: this
+    class(FHASH_TYPE_NAME), intent(inout) :: this
     KEY_TYPE, intent(in) :: key
     VALUE_TYPE, intent(out) :: value
     logical, optional, intent(out) :: success
@@ -210,7 +274,7 @@ module fhash_module__/**/SHORTNAME
       ! Not found. (Initial node in the bucket not set)
       if (present(success)) success = .false.
     else if (this%kv%key == key) then
-      value = this%kv%value
+      value VALUE_ASSIGNMENT this%kv%value
       if (present(success)) success = .true.
     else if (associated(this%next)) then
       call this%next%node_get(key, value, success)
@@ -220,7 +284,7 @@ module fhash_module__/**/SHORTNAME
   end subroutine
 
   subroutine clear(this)
-    class(fhash_type__/**/SHORTNAME), intent(inout) :: this
+    class(FHASH_TYPE_NAME), intent(inout) :: this
     integer :: i
 
     if (.not. allocated(this%buckets)) return
@@ -247,8 +311,8 @@ module fhash_module__/**/SHORTNAME
   end subroutine
 
   subroutine begin(this, fhash_target)
-    class(fhash_type_iterator__/**/SHORTNAME), intent(inout) :: this
-    type(fhash_type__/**/SHORTNAME), target, intent(in) :: fhash_target
+    class(FHASH_TYPE_ITERATOR_NAME), intent(inout) :: this
+    type(FHASH_TYPE_NAME), target, intent(in) :: fhash_target
 
     this%bucket_id = 1 
     this%node_ptr => fhash_target%buckets(1)
@@ -256,7 +320,7 @@ module fhash_module__/**/SHORTNAME
   end subroutine
 
   subroutine next(this, key, value, status)
-    class(fhash_type_iterator__/**/SHORTNAME), intent(inout) :: this
+    class(FHASH_TYPE_ITERATOR_NAME), intent(inout) :: this
     KEY_TYPE, intent(out) :: key
     VALUE_TYPE, intent(out) :: value
     integer, optional, intent(out) :: status
@@ -272,7 +336,7 @@ module fhash_module__/**/SHORTNAME
     enddo
 
     key = this%node_ptr%kv%key
-    value = this%node_ptr%kv%value
+    value VALUE_ASSIGNMENT this%node_ptr%kv%value
     if (present(status)) status = 0
     this%node_ptr => this%node_ptr%next
 
@@ -282,4 +346,9 @@ end module
 
 #undef KEY_TYPE
 #undef VALUE_TYPE
+#undef FHASH_TYPE_NAME
+#undef FHASH_TYPE_ITERATOR_NAME
+#undef VALUE_ASSIGNMENT
 #undef SHORTNAME
+#undef CONCAT
+#undef PASTE
