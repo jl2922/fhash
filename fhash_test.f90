@@ -159,9 +159,11 @@ program fhash_test
       if (mod(key, 5) .eq. 1) stop 'expect not to get deleted keys'
       if (mod(key, 5) .eq. 4) stop 'expect not to get deleted keys'
     end do
-    
+#ifdef CHECK_ITERATOR_VALUE
+#undef CHECK_ITERATOR_VALUE
     if (associated(pValue)) stop 'expect .not. associated(pValue)'
-    
+#endif
+
     call h%clear()
     
     deallocate(pValues)

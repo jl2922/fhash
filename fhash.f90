@@ -398,9 +398,9 @@ module FHASH_MODULE_NAME
         this%node_ptr => this%fhash_ptr%buckets(this%bucket_id)
       else
         if (present(status)) status = -1
-#ifdef VALUE_POINTER
-        nullify(value)
-#endif
+#ifdef VALUE_TYPE_INIT
+        value VALUE_ASSIGNMENT VALUE_TYPE_INIT
+#endif        
         return
       endif
     enddo
@@ -416,9 +416,10 @@ end module
 
 #undef KEY_TYPE
 #undef VALUE_TYPE
+#undef VALUE_TYPE_INIT
+#undef VALUE_ASSIGNMENT
 #undef FHASH_TYPE_NAME
 #undef FHASH_TYPE_ITERATOR_NAME
-#undef VALUE_ASSIGNMENT
 #undef SHORTNAME
 #undef CONCAT
 #undef PASTE
