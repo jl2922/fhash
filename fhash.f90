@@ -398,6 +398,9 @@ module FHASH_MODULE_NAME
         this%node_ptr => this%fhash_ptr%buckets(this%bucket_id)
       else
         if (present(status)) status = -1
+#ifdef VALUE_POINTER
+        nullify(value)
+#endif
         return
       endif
     enddo

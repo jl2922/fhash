@@ -162,6 +162,8 @@ program fhash_test
     
     if (associated(pValue)) stop 'expect .not. associated(pValue)'
     
+    call h%clear()
+    
     deallocate(pValues)
     
   end subroutine  
@@ -210,6 +212,7 @@ program fhash_test
     ! Check end of hash table.
     call it%next(key, value, status)
     if (status /= -1) stop 'expect to return -1'
+    
     call h%clear()
   end subroutine
 
