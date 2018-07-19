@@ -67,10 +67,11 @@ module ints_module
 end module ints_module
 
 ! Define the macros needed by fhash and include fhash.f90
-#define KEY_TYPE type(ints_type)
-#define VALUE_TYPE real(real64)
 #define KEY_USE use ints_module
+#define KEY_TYPE type(ints_type)
 #define VALUE_USE use, intrinsic :: iso_fortran_env
+#define VALUE_TYPE real(real64)
+#define VALUE_TYPE_INIT 0.0
 #define SHORTNAME ints_double
 #include "fhash.f90"
 
@@ -92,12 +93,16 @@ module int_module
 end module
 
 ! Define the macros needed by fhash and include fhash.f90
-#define KEY_TYPE integer
-#define VALUE_TYPE type(ints_type), pointer
 #define KEY_USE use int_module
+#define KEY_TYPE integer
 #define VALUE_USE use ints_module
+#define VALUE_TYPE type(ints_type), pointer
+!#define VALUE_TYPE_INIT null()
 #define SHORTNAME int_ints_ptr
 #ifndef __GFORTRAN__
 #define VALUE_POINTER
+#endif
+#ifdef VALUE_TYPE_INIT
+#define CHECK_ITERATOR_VALUE
 #endif
 #include "fhash.f90"

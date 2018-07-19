@@ -1,7 +1,13 @@
 *.dSYM
 fhash_test
 .vscode/
+.vs/
 ref.out
+[Dd]ebug/
+[Rr]elease/
+x64/[Dd]ebug/
+x64/[Rr]elease/
+*.u2d
 
 # Prerequisites
 *.d

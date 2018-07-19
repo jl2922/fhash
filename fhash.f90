@@ -106,6 +106,15 @@ module FHASH_MODULE_NAME
       ! Otherwise, fail and return 0.
       procedure :: node_get
 
+      ! If kv is not allocated, fail and return
+      ! If key is present and node is first in bucket, set first node in bucket to 
+      !   the next node of first. Return success
+      ! If key is present and the node is another member of the linked list, link the 
+      !   previous node's next node to this node's next node, deallocate this node, 
+      !   return success
+      ! Otherwise, fail and return 0
+      procedure :: node_remove
+      
       ! Deallocate kv is allocated.
       ! Call the clear method of the next node if the next pointer associated.
       ! Deallocate and nullify the next pointer.
@@ -140,6 +149,9 @@ module FHASH_MODULE_NAME
 
       ! Get the value at the given key.
       procedure, public :: get
+
+      ! Remove the value with the given key.
+      procedure, public :: remove
 
       ! Clear all the allocated memory (must be called to prevent memory leak).
       procedure, public :: clear
@@ -282,6 +294,61 @@ module FHASH_MODULE_NAME
       if (present(success)) success = .false.
     endif
   end subroutine
+  
+  subroutine remove(this, key, success)
+    class(FHASH_TYPE_NAME), intent(inout) :: this
+    KEY_TYPE, intent(in) :: key
+    logical, optional, intent(out) :: success
+
+    integer :: bucket_id
+    type(node_type)  ::  first
+    logical ::  locSuccess
+    
+    bucket_id = modulo(hash_value(key), this%n_buckets) + 1
+    first = this%buckets(bucket_id)
+
+    if (allocated(first%kv)) then
+      if (first%kv%key == key) then
+        if (associated(first%next)) then
+          this%buckets(bucket_id)%kv%key =  this%buckets(bucket_id)%next%kv%key
+          this%buckets(bucket_id)%kv%value VALUE_ASSIGNMENT this%buckets(bucket_id)%next%kv%value
+          deallocate(first%next%kv)
+          this%buckets(bucket_id)%next => this%buckets(bucket_id)%next%next 
+        else
+          deallocate(this%buckets(bucket_id)%kv)
+        endif
+        locSuccess = .true.
+      else
+        call node_remove(first%next, key, locSuccess, first)
+      end if
+    else
+      locSuccess = .false.      
+    endif
+    
+    if (locSuccess) this%n_keys = this%n_keys - 1
+    if (present(success)) success = locSuccess
+    
+  end subroutine
+
+  recursive subroutine node_remove(this, key, success, last)
+    class(node_type), intent(inout) :: this, last
+    KEY_TYPE, intent(in) :: key
+    logical, intent(out) :: success
+    
+    if (.not. allocated(this%kv)) then
+      ! Not found. (Initial node in the bucket not set)
+      success = .false.
+    else if (this%kv%key == key) then
+      last%next => this%next
+      nullify(this%next)
+      deallocate(this%kv)
+      success = .true.
+    else if (associated(this%next)) then
+      call this%next%node_remove(key, success, this)
+    else
+      success = .false.
+    endif
+  end subroutine
 
   subroutine clear(this)
     class(FHASH_TYPE_NAME), intent(inout) :: this
@@ -331,6 +398,9 @@ module FHASH_MODULE_NAME
         this%node_ptr => this%fhash_ptr%buckets(this%bucket_id)
       else
         if (present(status)) status = -1
+#ifdef VALUE_TYPE_INIT
+        value VALUE_ASSIGNMENT VALUE_TYPE_INIT
+#endif        
         return
       endif
     enddo
@@ -346,9 +416,10 @@ end module
 
 #undef KEY_TYPE
 #undef VALUE_TYPE
+#undef VALUE_TYPE_INIT
+#undef VALUE_ASSIGNMENT
 #undef FHASH_TYPE_NAME
 #undef FHASH_TYPE_ITERATOR_NAME
-#undef VALUE_ASSIGNMENT
 #undef SHORTNAME
 #undef CONCAT
 #undef PASTE
