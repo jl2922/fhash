@@ -31,7 +31,7 @@ module ints_module
 
       hash = 0
       do i = 1, size(ints%ints)
-        hash = xor(hash, ints%ints(i) + 1640531527 + ishft(hash, 6) + ishft(hash, -2))
+        hash = ieor(hash, ints%ints(i) + 1640531527 + ishft(hash, 6) + ishft(hash, -2))
       enddo
     end function
 
