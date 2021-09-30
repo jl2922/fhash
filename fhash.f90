@@ -182,7 +182,7 @@ module FHASH_MODULE_NAME
   end function
 
   function n_collisions(this)
-    class(FHASH_TYPE_NAME), intent(inout) :: this
+    class(FHASH_TYPE_NAME), intent(in) :: this
     integer :: n_collisions
     integer :: i
 
