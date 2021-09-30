@@ -98,13 +98,13 @@ module FHASH_MODULE_NAME
       ! If kv is not allocated, allocate and set to the key, value passed in.
       ! If key is present and the same as the key passed in, overwrite the value.
       ! Otherwise, defer to the next node (allocate if not allocated)
-      procedure :: node_set
+      procedure, non_overridable :: node_set
 
       ! If kv is not allocated, fail and return 0.
       ! If key is present and the same as the key passed in, return the value in kv.
       ! If next pointer is associated, delegate to it.
       ! Otherwise, fail and return 0.
-      procedure :: node_get
+      procedure, non_overridable :: node_get
 
       ! If kv is not allocated, fail and return
       ! If key is present and node is first in bucket, set first node in bucket to 
@@ -113,15 +113,15 @@ module FHASH_MODULE_NAME
       !   previous node's next node to this node's next node, deallocate this node, 
       !   return success
       ! Otherwise, fail and return 0
-      procedure :: node_remove
+      procedure, non_overridable :: node_remove
       
       ! Deallocate kv is allocated.
       ! Call the clear method of the next node if the next pointer associated.
       ! Deallocate and nullify the next pointer.
-      procedure :: node_clear
+      procedure, non_overridable :: node_clear
 
       ! Return the length of the linked list start from the current node.
-      procedure :: node_depth
+      procedure, non_overridable :: node_depth
   end type
 
   type FHASH_TYPE_NAME
@@ -133,28 +133,28 @@ module FHASH_MODULE_NAME
 
     contains
       ! Returns the number of buckets.
-      procedure, public :: bucket_count
+      procedure, non_overridable, public :: bucket_count
 
       ! Return the number of collisions.
-      procedure, public :: n_collisions
+      procedure, non_overridable, public :: n_collisions
 
       ! Reserve certain number of buckets.
-      procedure, public :: reserve
+      procedure, non_overridable, public :: reserve
 
       ! Returns number of keys.
-      procedure, public :: key_count
+      procedure, non_overridable, public :: key_count
 
       ! Set the value at a given a key.
-      procedure, public :: set
+      procedure, non_overridable, public :: set
 
       ! Get the value at the given key.
-      procedure, public :: get
+      procedure, non_overridable, public :: get
 
       ! Remove the value with the given key.
-      procedure, public :: remove
+      procedure, non_overridable, public :: remove
 
       ! Clear all the allocated memory (must be called to prevent memory leak).
-      procedure, public :: clear
+      procedure, non_overridable, public :: clear
   end type
 
   type FHASH_TYPE_ITERATOR_NAME
@@ -166,10 +166,10 @@ module FHASH_MODULE_NAME
 
     contains
       ! Set the iterator to the beginning of a hash table.
-      procedure, public :: begin
+      procedure, non_overridable, public :: begin
 
       ! Get the key value of the next element and advance the iterator.
-      procedure, public :: next
+      procedure, non_overridable, public :: next
   end type
 
   contains
