@@ -373,7 +373,6 @@ module FHASH_MODULE_NAME
     if (associated(this%next)) then
       call this%next%node_clear()
       deallocate(this%next)
-      nullify(this%next)
     endif
   end subroutine
 
