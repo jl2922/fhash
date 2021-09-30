@@ -279,7 +279,7 @@ module FHASH_MODULE_NAME
   end subroutine
 
   recursive subroutine node_get(this, key, value, success)
-    class(node_type), intent(inout) :: this
+    class(node_type), intent(in) :: this
     KEY_TYPE, intent(in) :: key
     VALUE_TYPE, intent(out) :: value
     logical, optional, intent(out) :: success
