@@ -175,7 +175,7 @@ module FHASH_MODULE_NAME
   contains
 
   function bucket_count(this)
-    class(FHASH_TYPE_NAME), intent(inout) :: this
+    class(FHASH_TYPE_NAME), intent(in) :: this
     integer :: bucket_count
 
     bucket_count = this%n_buckets
