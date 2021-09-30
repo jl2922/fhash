@@ -193,7 +193,7 @@ module FHASH_MODULE_NAME
   end function
 
   recursive function node_depth(this) result(depth)
-    class(node_type), intent(inout) :: this
+    class(node_type), intent(in) :: this
     integer :: depth
 
     if (.not. associated(this%next)) then
