@@ -206,24 +206,23 @@ module FHASH_MODULE_NAME
   subroutine reserve(this, n_buckets)
     class(FHASH_TYPE_NAME), intent(inout) :: this
     integer, intent(in) :: n_buckets
-    integer, dimension(29) :: sizes
+
     integer :: i
+    integer, parameter :: sizes(*) = [5, 11, 23, 47, 97, 199, 409, 823, 1741, 3469, 6949, 14033, &
+    & 28411, 57557, 116731, 236897, 480881, 976369,1982627, 4026031, &
+    & 8175383, 16601593, 33712729, 68460391, 139022417, 282312799, &
+    & 573292817, 1164186217, 2147483647]
 
     if (this%key_count() > 0) stop 'Cannot reserve when fhash is not empty.'
+    if (n_buckets > sizes(size(sizes))) stop "Did not expect to need this many buckets."
 
-    sizes = (/5, 11, 23, 47, 97, 199, 409, 823, 1741, 3469, 6949, 14033, &
-      & 28411, 57557, 116731, 236897, 480881, 976369,1982627, 4026031, &
-      & 8175383, 16601593, 33712729, 68460391, 139022417, 282312799, &
-      & 573292817, 1164186217, 2147483647/)
     do i = 1, size(sizes)
       if (sizes(i) >= n_buckets) then
         this%n_buckets = sizes(i)
         allocate(this%buckets(this%n_buckets))
-        return
+        exit
       endif
     enddo
-
-    stop "Did not expect to need this many buckets."
   end subroutine
 
   function key_count(this)
