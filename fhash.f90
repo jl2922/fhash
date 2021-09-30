@@ -308,27 +308,23 @@ module FHASH_MODULE_NAME
     bucket_id = modulo(hash_value(key), this%n_buckets) + 1
     first = this%buckets(bucket_id)
 
-    if (allocated(first%kv)) then
-      if (first%kv%key == key) then
-        if (associated(first%next)) then
-          this%buckets(bucket_id)%kv%key =  this%buckets(bucket_id)%next%kv%key
-          this%buckets(bucket_id)%kv%value VALUE_ASSIGNMENT this%buckets(bucket_id)%next%kv%value
-          deallocate(first%next%kv)
-          this%buckets(bucket_id)%next => this%buckets(bucket_id)%next%next
-        else
-          deallocate(this%buckets(bucket_id)%kv)
-        endif
-        locSuccess = .true.
-      else
-        call node_remove(first%next, key, locSuccess, first)
-      end if
-    else
+    if (.not. allocated(first%kv)) then
       locSuccess = .false.
+    elseif (.not. first%kv%key == key) then
+      call node_remove(first%next, key, locSuccess, first)
+    elseif (associated(first%next)) then
+      this%buckets(bucket_id)%kv%key =  this%buckets(bucket_id)%next%kv%key
+      this%buckets(bucket_id)%kv%value VALUE_ASSIGNMENT this%buckets(bucket_id)%next%kv%value
+      deallocate(first%next%kv)
+      this%buckets(bucket_id)%next => this%buckets(bucket_id)%next%next
+      locSuccess = .true.
+    else
+      deallocate(this%buckets(bucket_id)%kv)
+      locSuccess = .true.
     endif
     
     if (locSuccess) this%n_keys = this%n_keys - 1
     if (present(success)) success = locSuccess
-    
   end subroutine
 
   recursive subroutine node_remove(this, key, success, last)
