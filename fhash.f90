@@ -227,7 +227,7 @@ module FHASH_MODULE_NAME
   end subroutine
 
   function key_count(this)
-    class(FHASH_TYPE_NAME), intent(inout) :: this
+    class(FHASH_TYPE_NAME), intent(in) :: this
     integer :: key_count
 
     key_count = this%n_keys
