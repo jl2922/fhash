@@ -213,8 +213,8 @@ module FHASH_MODULE_NAME
     & 8175383, 16601593, 33712729, 68460391, 139022417, 282312799, &
     & 573292817, 1164186217, 2147483647]
 
-    if (this%key_count() > 0) stop 'Cannot reserve when fhash is not empty.'
-    if (n_buckets > sizes(size(sizes))) stop "Did not expect to need this many buckets."
+    call assert(this%key_count() == 0, 'Cannot reserve when fhash is not empty.')
+    call assert(sizes(size(sizes)) >= n_buckets, "Did not expect to need this many buckets.")
 
     do i = 1, size(sizes)
       if (sizes(i) >= n_buckets) then
@@ -416,6 +416,16 @@ module FHASH_MODULE_NAME
 
   end subroutine
 
+  subroutine assert(condition, msg)
+    use, intrinsic :: iso_fortran_env, only: error_unit
+    logical, intent(in) :: condition
+    character(*), intent(in) :: msg
+
+    if (.not. condition) then
+      write(error_unit, '(a)') msg
+      error stop
+    endif
+  end subroutine
 end module
 
 #undef KEY_TYPE
