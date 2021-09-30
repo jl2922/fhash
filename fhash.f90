@@ -302,26 +302,25 @@ module FHASH_MODULE_NAME
     logical, optional, intent(out) :: success
 
     integer :: bucket_id
-    type(node_type)  ::  first
     logical ::  locSuccess
     
     bucket_id = modulo(hash_value(key), this%n_buckets) + 1
-    first = this%buckets(bucket_id)
-
-    if (.not. allocated(first%kv)) then
-      locSuccess = .false.
-    elseif (.not. first%kv%key == key) then
-      call node_remove(first%next, key, locSuccess, first)
-    elseif (associated(first%next)) then
-      this%buckets(bucket_id)%kv%key =  this%buckets(bucket_id)%next%kv%key
-      this%buckets(bucket_id)%kv%value VALUE_ASSIGNMENT this%buckets(bucket_id)%next%kv%value
-      deallocate(first%next%kv)
-      this%buckets(bucket_id)%next => this%buckets(bucket_id)%next%next
-      locSuccess = .true.
-    else
-      deallocate(this%buckets(bucket_id)%kv)
-      locSuccess = .true.
-    endif
+    associate(first => this%buckets(bucket_id))
+      if (.not. allocated(first%kv)) then
+        locSuccess = .false.
+      elseif (.not. first%kv%key == key) then
+        call node_remove(first%next, key, locSuccess, first)
+      elseif (associated(first%next)) then
+        first%kv%key =  first%next%kv%key
+        first%kv%value VALUE_ASSIGNMENT this%buckets(bucket_id)%next%kv%value
+        deallocate(first%next%kv)
+        first%next => first%next%next
+        locSuccess = .true.
+      else
+        deallocate(first%kv)
+        locSuccess = .true.
+      endif
+    end associate
     
     if (locSuccess) this%n_keys = this%n_keys - 1
     if (present(success)) success = locSuccess
