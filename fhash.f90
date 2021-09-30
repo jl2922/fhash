@@ -115,7 +115,7 @@ module FHASH_MODULE_NAME
       ! Otherwise, fail and return 0
       procedure, non_overridable :: node_remove
       
-      ! Deallocate kv is allocated.
+      ! Deallocate kv if allocated.
       ! Call the clear method of the next node if the next pointer associated.
       ! Deallocate and nullify the next pointer.
       procedure, non_overridable :: node_clear
