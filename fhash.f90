@@ -268,7 +268,7 @@ module FHASH_MODULE_NAME
   end subroutine
 
   subroutine get(this, key, value, success)
-    class(FHASH_TYPE_NAME), intent(inout) :: this
+    class(FHASH_TYPE_NAME), intent(in) :: this
     KEY_TYPE, intent(in) :: key
     VALUE_TYPE, intent(out) :: value
     logical, optional, intent(out) :: success
