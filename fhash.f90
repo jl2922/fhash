@@ -222,6 +222,8 @@ module FHASH_MODULE_NAME
         return
       endif
     enddo
+
+    stop "Did not expect to need this many buckets."
   end subroutine
 
   function key_count(this)
