@@ -382,6 +382,7 @@ module FHASH_MODULE_NAME
     type(FHASH_TYPE_NAME), target, intent(in) :: fhash_target
 
     this%bucket_id = 1
+    call assert(allocated(fhash_target%buckets), "cannot start iteration when fhash is empty")
     this%node_ptr => fhash_target%buckets(1)
     this%fhash_ptr => fhash_target
   end subroutine
