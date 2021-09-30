@@ -115,13 +115,16 @@ module FHASH_MODULE_NAME
       ! Otherwise, fail and return 0
       procedure, non_overridable :: node_remove
       
+      ! Return the length of the linked list start from the current node.
+      procedure, non_overridable :: node_depth
+      
       ! Deallocate kv if allocated.
       ! Call the clear method of the next node if the next pointer associated.
       ! Deallocate and nullify the next pointer.
-      procedure, non_overridable :: node_clear
-
-      ! Return the length of the linked list start from the current node.
-      procedure, non_overridable :: node_depth
+      !
+      ! Need separate finalizers because a resursive procedure cannot be elemental.
+      final :: clear_scalar_node
+      final :: clear_rank1_nodes
   end type
 
   type FHASH_TYPE_NAME
@@ -153,7 +156,7 @@ module FHASH_MODULE_NAME
       ! Remove the value with the given key.
       procedure, non_overridable, public :: remove
 
-      ! Clear all the allocated memory (must be called to prevent memory leak).
+      ! Clear all the allocated memory
       procedure, non_overridable, public :: clear
   end type
 
@@ -302,33 +305,28 @@ module FHASH_MODULE_NAME
     logical, optional, intent(out) :: success
 
     integer :: bucket_id
-    type(node_type)  ::  first
     logical ::  locSuccess
     
     bucket_id = modulo(hash_value(key), this%n_buckets) + 1
-    first = this%buckets(bucket_id)
-
-    if (allocated(first%kv)) then
-      if (first%kv%key == key) then
-        if (associated(first%next)) then
-          this%buckets(bucket_id)%kv%key =  this%buckets(bucket_id)%next%kv%key
-          this%buckets(bucket_id)%kv%value VALUE_ASSIGNMENT this%buckets(bucket_id)%next%kv%value
-          deallocate(first%next%kv)
-          this%buckets(bucket_id)%next => this%buckets(bucket_id)%next%next
-        else
-          deallocate(this%buckets(bucket_id)%kv)
-        endif
+    associate(first => this%buckets(bucket_id))
+      if (.not. allocated(first%kv)) then
+        locSuccess = .false.
+      elseif (.not. first%kv%key == key) then
+        call node_remove(first%next, key, locSuccess, first)
+      elseif (associated(first%next)) then
+        first%kv%key =  first%next%kv%key
+        first%kv%value VALUE_ASSIGNMENT this%buckets(bucket_id)%next%kv%value
+        deallocate(first%next%kv)
+        first%next => first%next%next
         locSuccess = .true.
       else
-        call node_remove(first%next, key, locSuccess, first)
-      end if
-    else
-      locSuccess = .false.
-    endif
+        deallocate(first%kv)
+        locSuccess = .true.
+      endif
+    end associate
     
     if (locSuccess) this%n_keys = this%n_keys - 1
     if (present(success)) success = locSuccess
-    
   end subroutine
 
   recursive subroutine node_remove(this, key, success, last)
@@ -352,28 +350,25 @@ module FHASH_MODULE_NAME
   end subroutine
 
   subroutine clear(this)
-    class(FHASH_TYPE_NAME), intent(inout) :: this
-    integer :: i
-
-    if (.not. allocated(this%buckets)) return
-
-    do i = 1, size(this%buckets)
-      if (associated(this%buckets(i)%next)) then
-        call this%buckets(i)%next%node_clear()
-        deallocate(this%buckets(i)%next)
-      endif
-    enddo
-    deallocate(this%buckets)
-    this%n_keys = 0
-    this%n_buckets = 0
+    class(FHASH_TYPE_NAME), intent(out) :: this
   end subroutine
 
-  recursive subroutine node_clear(this)
-    class(node_type), intent(inout) :: this
+  subroutine clear_rank1_nodes(nodes)
+    type(node_type), intent(inout) :: nodes(:)
 
-    if (associated(this%next)) then
-      call this%next%node_clear()
-      deallocate(this%next)
+    integer :: i
+
+    do i = 1, size(nodes)
+      call clear_scalar_node(nodes(i))
+    enddo
+  end subroutine
+
+  recursive subroutine clear_scalar_node(node)
+    type(node_type), intent(inout) :: node
+
+    if (associated(node%next)) then
+      call clear_scalar_node(node%next)
+      deallocate(node%next)
     endif
   end subroutine
 
