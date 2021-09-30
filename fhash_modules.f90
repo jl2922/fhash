@@ -25,13 +25,21 @@ module ints_module
   contains
 
     function hash_value_ints(ints) result(hash)
+      use, intrinsic :: iso_fortran_env, only: int64, real64
       type(ints_type), intent(in) :: ints
-      integer :: hash
+      integer(kind(ints%ints)) :: hash
+
+      ! Assume either 32 or 64 bits:
+      integer, parameter :: bits = merge(64, 32, kind(ints%ints) == int64)
+      real(real64), parameter :: phi = (sqrt(5.0_real64) + 1) / 2
+      integer, parameter :: magic_number = nint(2.0_real64**bits * (1 - 1 / phi)) ! = 1640531527 for 32 bit
       integer :: i
 
       hash = 0
       do i = 1, size(ints%ints)
-        hash = ieor(hash, ints%ints(i) + 1640531527 + ishft(hash, 6) + ishft(hash, -2))
+        ! This triggers an error in `gfortran` (version 9.3.0) with the `-ftrapv` option.
+        ! Compiler bug?
+        hash = ieor(hash, ints%ints(i) + magic_number + ishft(hash, 6) + ishft(hash, -2))
       enddo
     end function
 
