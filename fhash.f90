@@ -3,17 +3,17 @@
 ! DO NOT COMPILE THIS TEMPLATE FILE DIRECTLY.
 ! Use a wrapper module and include this file instead, e.g. fhash_modules.f90.
 ! Remove is not implemented since not needed currently.
-!  
+!
 ! #define                         | meaning
 ! --------------------------------+-----------------------------------------------------
-! SHORTNAME <Name>                | (optional) The name of the type this FHASH table is 
-!                                 | for. If set, it overrides all settings that have 
+! SHORTNAME <Name>                | (optional) The name of the type this FHASH table is
+!                                 | for. If set, it overrides all settings that have
 !                                 | have possibly been made for FHASH_MODULE_NAME,
 !                                 | FHASH_TYPE_NAME and FHASH_TYPE_ITERATOR_NAME.
 !                                 |
 ! FHASH_MODULE_NAME <Name>        | The name of the module that encapsulates the FHASH
 !                                 | types and functionality
-! FHASH_TYPE_NAME <Name>          | The name of the actual FHASH type 
+! FHASH_TYPE_NAME <Name>          | The name of the actual FHASH type
 ! FHASH_TYPE_ITERATOR_NAME <Name> | The name of the FHASH type that can iterate through
 !                                 | the whole FHASH
 !                                 |
@@ -31,7 +31,7 @@
 !                                 | values. This is the default. (see VALUE_POINTER)
 ! VALUE_POINTER                   | Flag indicating that the values in FHASH are value
 !                                 | pointers.
-! VALUE_ASSIGNMENT                | (internal) The assignment operator, do not set it 
+! VALUE_ASSIGNMENT                | (internal) The assignment operator, do not set it
 !                                 | anywhere, it is configured based on VALUE_VALUE or
 !                                 | VALUE_POINTER
 #endif
@@ -107,10 +107,10 @@ module FHASH_MODULE_NAME
       procedure, non_overridable :: node_get
 
       ! If kv is not allocated, fail and return
-      ! If key is present and node is first in bucket, set first node in bucket to 
+      ! If key is present and node is first in bucket, set first node in bucket to
       !   the next node of first. Return success
-      ! If key is present and the node is another member of the linked list, link the 
-      !   previous node's next node to this node's next node, deallocate this node, 
+      ! If key is present and the node is another member of the linked list, link the
+      !   previous node's next node to this node's next node, deallocate this node,
       !   return success
       ! Otherwise, fail and return 0
       procedure, non_overridable :: node_remove
@@ -315,7 +315,7 @@ module FHASH_MODULE_NAME
           this%buckets(bucket_id)%kv%key =  this%buckets(bucket_id)%next%kv%key
           this%buckets(bucket_id)%kv%value VALUE_ASSIGNMENT this%buckets(bucket_id)%next%kv%value
           deallocate(first%next%kv)
-          this%buckets(bucket_id)%next => this%buckets(bucket_id)%next%next 
+          this%buckets(bucket_id)%next => this%buckets(bucket_id)%next%next
         else
           deallocate(this%buckets(bucket_id)%kv)
         endif
@@ -324,7 +324,7 @@ module FHASH_MODULE_NAME
         call node_remove(first%next, key, locSuccess, first)
       end if
     else
-      locSuccess = .false.      
+      locSuccess = .false.
     endif
     
     if (locSuccess) this%n_keys = this%n_keys - 1
@@ -359,7 +359,7 @@ module FHASH_MODULE_NAME
     if (.not. allocated(this%buckets)) return
 
     do i = 1, size(this%buckets)
-      if (associated(this%buckets(i)%next)) then 
+      if (associated(this%buckets(i)%next)) then
         call this%buckets(i)%next%node_clear()
         deallocate(this%buckets(i)%next)
       endif
@@ -382,7 +382,7 @@ module FHASH_MODULE_NAME
     class(FHASH_TYPE_ITERATOR_NAME), intent(inout) :: this
     type(FHASH_TYPE_NAME), target, intent(in) :: fhash_target
 
-    this%bucket_id = 1 
+    this%bucket_id = 1
     this%node_ptr => fhash_target%buckets(1)
     this%fhash_ptr => fhash_target
   end subroutine
@@ -405,7 +405,7 @@ module FHASH_MODULE_NAME
         if (present(status)) status = -1
 #ifdef VALUE_TYPE_INIT
         value VALUE_ASSIGNMENT VALUE_TYPE_INIT
-#endif        
+#endif
         return
       endif
     enddo
