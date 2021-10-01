@@ -2,7 +2,7 @@
 Fast hash map implementation in fortran
 
 ## Description
-Implemention of the GCC hashmap structure in Fortran. With the usage of macros, it can support any types of keys and values, as long as you implement (or the compiler provides) the corresponding equal operator(==), assignment operator(=) and the hash_value interface of the key type and the assignment operator of the value type.
+Implemention of the GCC hashmap structure in Fortran. With the usage of macros, it can support any types of keys and values, as long as you implement (or the compiler provides) the corresponding `KEYS_EQUAL_FUNC` (defaults to `==`), assignment operator(=) and the hash_value interface of the key type and the assignment operator of the value type.
 
 ## Benchmarks
 
