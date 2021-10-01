@@ -12,10 +12,6 @@ module ints_module
     module procedure hash_value_ints
   end interface
 
-  interface operator (==)
-    module procedure ints_equal
-  end interface
-
 #ifdef __GFORTRAN__
   interface assignment (=)
     module procedure ints_ptr_assign
@@ -77,6 +73,7 @@ end module ints_module
 ! Define the macros needed by fhash and include fhash.f90
 #define KEY_USE use ints_module
 #define KEY_TYPE type(ints_type)
+#define KEYS_EQUAL_FUNC ints_equal
 #define VALUE_USE use, intrinsic :: iso_fortran_env
 #define VALUE_TYPE real(real64)
 #define VALUE_TYPE_INIT 0.0
