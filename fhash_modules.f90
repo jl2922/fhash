@@ -25,10 +25,8 @@ module ints_module
       type(ints_type), intent(in) :: ints
       integer(kind(ints%ints)) :: hash
 
-      ! Assume either 32 or 64 bits:
-      integer, parameter :: bits = merge(64, 32, kind(ints%ints) == int64)
       real(real64), parameter :: phi = (sqrt(5.0_real64) + 1) / 2
-      integer, parameter :: magic_number = nint(2.0_real64**bits * (1 - 1 / phi)) ! = 1640531527 for 32 bit
+      integer, parameter :: magic_number = nint(2.0_real64**bit_size(hash) * (1 - 1 / phi)) ! = 1640531527 for 32 bit
       integer :: i
 
       hash = 0
