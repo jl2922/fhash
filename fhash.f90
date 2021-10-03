@@ -453,7 +453,10 @@ module FHASH_MODULE_NAME
     integer, intent(in) :: key(:)
 
     real(kind(1.0d0)), parameter :: phi = (sqrt(5.0d0) + 1) / 2
-    integer, parameter :: magic_number = nint(2.0d0**bit_size(hash) * (1 - 1 / phi)) ! = 1640531527 for 32 bit
+    ! Do not use `nint` intrinsic, because ifort claims that  "Fortran 2018 specifies that
+    ! "an elemental intrinsic function here be of type integer or character and
+    !  each argument must be an initialization expr of type integer or character":
+    integer, parameter :: magic_number = 0.5d0 + 2.0d0**bit_size(hash) * (1 - 1 / phi)
     integer :: i
 
     hash = 0

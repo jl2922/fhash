@@ -1,13 +1,14 @@
 FC := gfortran
-FFLAGS = -g -fbacktrace -std=f2018 -pedantic -Wall -Wextra -cpp -Wno-unused-dummy-argument
+FFLAGS = -g -fbacktrace -std=f2018 -pedantic -Wall -Wextra -cpp
 FFLAGS += -Werror -Werror=shadow -Werror=intrinsic-shadow -Wuninitialized
-FFLAGS += -Wunreachable-code -Wconversion
-FFLAGS += -Wno-maybe-uninitialized -Wno-unused-dummy-argument -Wno-error=return-type
-FFLAGS += -Waliasing -Wampersand -Wc-binding-type -Wcharacter-truncation -Wconversion
-FFLAGS += -Wno-unused-function
+FFLAGS += -Wunreachable-code
+FFLAGS += -Waliasing -Wampersand -Wc-binding-type -Wcharacter-truncation
 FFLAGS += -Wdo-subscript -Wfunction-elimination -Wimplicit-interface -Wimplicit-procedure -Wintrinsic-shadow -Wintrinsics-std -Wline-truncation -Wno-tabs
 FFLAGS += -Wreal-q-constant -Wsurprising
 FFLAGS += -Wunused-parameter -Wfrontend-loop-interchange
+FFLAGS += -Wno-maybe-uninitialized -Wno-unused-dummy-argument -Wno-error=return-type
+FFLAGS += -Wno-unused-function
+FFLAGS += -Wno-conversion
 
 FFLAGS_DEVEL = -O0 -fcheck=all -fbounds-check -Warray-bounds -Wstrict-overflow=5 -Wunderflow -fsanitize-address-use-after-scope -ffpe-trap=invalid,zero,overflow
 # FFLAGS_DEVEL += -ftrapv
