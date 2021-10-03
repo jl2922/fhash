@@ -74,6 +74,7 @@ end module ints_module
 #define KEYS_EQUAL_FUNC ints_equal
 #define VALUE_USE use, intrinsic :: iso_fortran_env
 #define VALUE_TYPE real(real64)
+#define HASH_FUNC hash_value
 #define VALUE_TYPE_INIT 0.0
 #define SHORTNAME ints_double
 #include "fhash.f90"
@@ -101,6 +102,7 @@ end module
 #define VALUE_USE use ints_module
 #define VALUE_TYPE type(ints_type), pointer
 !#define VALUE_TYPE_INIT null()
+#define HASH_FUNC hash_value
 #define SHORTNAME int_ints_ptr
 #ifndef __GFORTRAN__
 #define VALUE_POINTER

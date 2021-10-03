@@ -4,7 +4,7 @@ FFLAGS += -Werror -Werror=shadow -Werror=intrinsic-shadow -Wuninitialized
 FFLAGS += -Wunreachable-code -Wconversion
 FFLAGS += -Wno-maybe-uninitialized -Wno-unused-dummy-argument -Wno-error=return-type
 FFLAGS += -Waliasing -Wampersand -Wc-binding-type -Wcharacter-truncation -Wconversion
-FFLAGS += -Wno-error=unused-function
+FFLAGS += -Wno-unused-function
 FFLAGS += -Wdo-subscript -Wfunction-elimination -Wimplicit-interface -Wimplicit-procedure -Wintrinsic-shadow -Wintrinsics-std -Wline-truncation -Wno-tabs
 FFLAGS += -Wreal-q-constant -Wsurprising
 FFLAGS += -Wunused-parameter -Wfrontend-loop-interchange

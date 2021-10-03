@@ -29,7 +29,7 @@
 ! VALUE_TYPE <typename>           | The type of the values. May require VALUE_USE to be
 !                                 | accessible.
 ! 
-! HASH_FUNC                   | (optional) hash function name. Defaults to 'hash'.
+! HASH_FUNC                       | (optional) hash function name. Defaults to 'hash'.
 !                                 |
 ! VALUE_VALUE                     | Flag indicating that the values in FHASH are value
 !                                 | values. This is the default. (see VALUE_POINTER)
@@ -57,10 +57,6 @@
 #define FHASH_TYPE_ITERATOR_NAME CONCAT(fhash_type_iterator__,SHORTNAME)
 #endif
 
-#ifndef HASH_FUNC
-#define HASH_FUNC hash_value
-#endif
-  
 #undef VALUE_ASSIGNMENT
 #ifndef VALUE_VALUE
 #ifndef VALUE_POINTER
@@ -184,6 +180,11 @@ module FHASH_MODULE_NAME
       ! Get the key value of the next element and advance the iterator.
       procedure, non_overridable, public :: next
   end type
+
+  interface default_hash
+    module procedure :: default_hash__int
+    module procedure :: default_hash__int_array
+  end interface
 
   contains
   logical function keys_equal(a, b)
@@ -375,7 +376,14 @@ module FHASH_MODULE_NAME
     class(FHASH_TYPE_NAME), intent(in) :: this
     KEY_TYPE, intent(in) :: key
 
-    bucket_id = modulo(HASH_FUNC(key), this%n_buckets) + 1
+    integer :: hash
+
+#ifdef HASH_FUNC
+    hash = HASH_FUNC(key)
+#else
+    hash = default_hash(key)
+#endif
+    bucket_id = modulo(hash, this%n_buckets) + 1
   end function
 
 
@@ -437,6 +445,27 @@ module FHASH_MODULE_NAME
     this%node_ptr => this%node_ptr%next
 
   end subroutine
+
+  integer function default_hash__int(key) result(hash)
+    integer, intent(in) :: key
+
+    hash = key
+  end function
+
+  integer function default_hash__int_array(key) result(hash)
+    integer, intent(in) :: key(:)
+
+    real(kind(1.0d0)), parameter :: phi = (sqrt(5.0d0) + 1) / 2
+    integer, parameter :: magic_number = nint(2.0d0**bit_size(hash) * (1 - 1 / phi)) ! = 1640531527 for 32 bit
+    integer :: i
+
+    hash = 0
+    do i = 1, size(key)
+      ! This triggers an error in `gfortran` (version 9.3.0) with the `-ftrapv` option.
+      ! Compiler bug?
+      hash = ieor(hash, key(i) + magic_number + ishft(hash, 6) + ishft(hash, -2))
+    enddo
+  end function
 
   subroutine assert(condition, msg)
     use, intrinsic :: iso_fortran_env, only: error_unit
