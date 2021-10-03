@@ -35,13 +35,9 @@
 ! 
 ! HASH_FUNC                       | (optional) hash function name. Defaults to 'hash'.
 !                                 |
-! VALUE_VALUE                     | Flag indicating that the values in FHASH are value
-!                                 | values. This is the default. (see VALUE_POINTER)
-! VALUE_POINTER                   | Flag indicating that the values in FHASH are value
-!                                 | pointers.
+! VALUE_POINTER                   | (optional) If defined, the values are pointers.
 ! VALUE_ASSIGNMENT                | (internal) The assignment operator, do not set it
-!                                 | anywhere, it is configured based on VALUE_VALUE or
-!                                 | VALUE_POINTER
+!                                 | anywhere, it is configured based on VALUE_POINTER
 #endif
 
 #ifdef SHORTNAME
@@ -59,12 +55,6 @@
 #define FHASH_MODULE_NAME CONCAT(fhash_module__,SHORTNAME)
 #define FHASH_TYPE_NAME CONCAT(fhash_type__,SHORTNAME)
 #define FHASH_TYPE_ITERATOR_NAME CONCAT(fhash_type_iterator__,SHORTNAME)
-#endif
-
-#ifndef VALUE_VALUE
-#ifndef VALUE_POINTER
-#define VALUE_VALUE
-#endif
 #endif
 
 #ifdef VALUE_POINTER
