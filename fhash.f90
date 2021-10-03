@@ -28,6 +28,8 @@
 !                                 | a specific type as a value for the FHASH
 ! VALUE_TYPE <typename>           | The type of the values. May require VALUE_USE to be
 !                                 | accessible.
+! 
+! HASH_FUNC                   | (optional) hash function name. Defaults to 'hash'.
 !                                 |
 ! VALUE_VALUE                     | Flag indicating that the values in FHASH are value
 !                                 | values. This is the default. (see VALUE_POINTER)
@@ -53,6 +55,10 @@
 #define FHASH_MODULE_NAME CONCAT(fhash_module__,SHORTNAME)
 #define FHASH_TYPE_NAME CONCAT(fhash_type__,SHORTNAME)
 #define FHASH_TYPE_ITERATOR_NAME CONCAT(fhash_type_iterator__,SHORTNAME)
+#endif
+
+#ifndef HASH_FUNC
+#define HASH_FUNC hash_value
 #endif
   
 #undef VALUE_ASSIGNMENT
@@ -160,6 +166,8 @@ module FHASH_MODULE_NAME
 
       ! Clear all the allocated memory
       procedure, non_overridable, public :: clear
+
+      procedure, non_overridable, private :: key2bucket
   end type
 
   type FHASH_TYPE_ITERATOR_NAME
@@ -253,8 +261,7 @@ module FHASH_MODULE_NAME
     integer :: bucket_id
     logical :: is_new
 
-    bucket_id = modulo(hash_value(key), this%n_buckets) + 1
-
+    bucket_id = this%key2bucket(key)
     call this%buckets(bucket_id)%node_set(key, value, is_new)
 
     if (is_new) this%n_keys = this%n_keys + 1
@@ -287,7 +294,7 @@ module FHASH_MODULE_NAME
     logical, optional, intent(out) :: success
     integer :: bucket_id
 
-    bucket_id = modulo(hash_value(key), this%n_buckets) + 1
+    bucket_id = this%key2bucket(key)
     call this%buckets(bucket_id)%node_get(key, value, success)
   end subroutine
 
@@ -318,7 +325,7 @@ module FHASH_MODULE_NAME
     integer :: bucket_id
     logical ::  locSuccess
     
-    bucket_id = modulo(hash_value(key), this%n_buckets) + 1
+    bucket_id = this%key2bucket(key)
     associate(first => this%buckets(bucket_id))
       if (.not. allocated(first%kv)) then
         locSuccess = .false.
@@ -363,6 +370,14 @@ module FHASH_MODULE_NAME
   subroutine clear(this)
     class(FHASH_TYPE_NAME), intent(out) :: this
   end subroutine
+  
+  integer function key2bucket(this, key) result(bucket_id)
+    class(FHASH_TYPE_NAME), intent(in) :: this
+    KEY_TYPE, intent(in) :: key
+
+    bucket_id = modulo(HASH_FUNC(key), this%n_buckets) + 1
+  end function
+
 
   subroutine clear_rank1_nodes(nodes)
     type(node_type), intent(inout) :: nodes(:)
@@ -441,6 +456,7 @@ end module
 #undef VALUE_TYPE_INIT
 #undef VALUE_ASSIGNMENT
 #undef FHASH_TYPE_NAME
+#undef HASH_FUNC
 #undef FHASH_TYPE_ITERATOR_NAME
 #undef SHORTNAME
 #undef CONCAT
