@@ -60,8 +60,8 @@ module ints_module
 
 #ifdef __GFORTRAN__
     subroutine ints_ptr_assign(lhs, rhs)
-      type(ints_type), pointer, intent(inout) :: lhs
-      type(ints_type), pointer, intent(in) :: rhs
+      type(ints_type), pointer, intent(out) :: lhs
+      type(ints_type), target, intent(in) :: rhs
       lhs => rhs
     end subroutine
 #endif
