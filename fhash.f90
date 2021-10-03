@@ -61,7 +61,6 @@
 #define FHASH_TYPE_ITERATOR_NAME CONCAT(fhash_type_iterator__,SHORTNAME)
 #endif
 
-#undef VALUE_ASSIGNMENT
 #ifndef VALUE_VALUE
 #ifndef VALUE_POINTER
 #define VALUE_VALUE
