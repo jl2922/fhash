@@ -15,55 +15,55 @@ module ints_module
 #ifdef __GFORTRAN__
   interface assignment (=)
     module procedure ints_ptr_assign
-  end interface 
+  end interface
 #endif
-  
-  contains
 
-    function hash_value_ints(ints) result(hash)
-      use, intrinsic :: iso_fortran_env, only: int64, real64
-      type(ints_type), intent(in) :: ints
-      integer(kind(ints%ints)) :: hash
+contains
 
-      real(real64), parameter :: phi = (sqrt(5.0_real64) + 1) / 2
-      integer, parameter :: magic_number = nint(2.0_real64**bit_size(hash) * (1 - 1 / phi)) ! = 1640531527 for 32 bit
-      integer :: i
+  function hash_value_ints(ints) result(hash)
+    use, intrinsic :: iso_fortran_env, only: int64, real64
+    type(ints_type), intent(in) :: ints
+    integer(kind(ints%ints)) :: hash
 
-      hash = 0
-      do i = 1, size(ints%ints)
-        ! This triggers an error in `gfortran` (version 9.3.0) with the `-ftrapv` option.
-        ! Compiler bug?
-        hash = ieor(hash, ints%ints(i) + magic_number + ishft(hash, 6) + ishft(hash, -2))
-      enddo
-    end function
+    real(real64), parameter :: phi = (sqrt(5.0_real64) + 1) / 2
+    integer, parameter :: magic_number = nint(2.0_real64**bit_size(hash) * (1 - 1 / phi)) ! = 1640531527 for 32 bit
+    integer :: i
 
-    function ints_equal(lhs, rhs)
-      type(ints_type), intent(in) :: lhs, rhs
-      logical :: ints_equal
-      integer :: i
+    hash = 0
+    do i = 1, size(ints%ints)
+      ! This triggers an error in `gfortran` (version 9.3.0) with the `-ftrapv` option.
+      ! Compiler bug?
+      hash = ieor(hash, ints%ints(i) + magic_number + ishft(hash, 6) + ishft(hash, -2))
+    enddo
+  end function
 
-      if (size(lhs%ints) /= size(rhs%ints)) then
+  function ints_equal(lhs, rhs)
+    type(ints_type), intent(in) :: lhs, rhs
+    logical :: ints_equal
+    integer :: i
+
+    if (size(lhs%ints) /= size(rhs%ints)) then
+      ints_equal = .false.
+      return
+    endif
+
+    do i = 1, size(lhs%ints)
+      if (lhs%ints(i) /= rhs%ints(i)) then
         ints_equal = .false.
         return
       endif
+    enddo
 
-      do i = 1, size(lhs%ints)
-        if (lhs%ints(i) /= rhs%ints(i)) then
-          ints_equal = .false.
-          return
-        endif
-      enddo
+    ints_equal = .true.
 
-      ints_equal = .true.
-
-    end function
+  end function
 
 #ifdef __GFORTRAN__
-    subroutine ints_ptr_assign(lhs, rhs)
-      type(ints_type), pointer, intent(out) :: lhs
-      type(ints_type), target, intent(in) :: rhs
-      lhs => rhs
-    end subroutine
+  subroutine ints_ptr_assign(lhs, rhs)
+    type(ints_type), pointer, intent(out) :: lhs
+    type(ints_type), target, intent(in) :: rhs
+    lhs => rhs
+  end subroutine
 #endif
 
 end module ints_module
