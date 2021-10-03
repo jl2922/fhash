@@ -22,7 +22,11 @@
 ! KEY_TYPE <typename>             | The type of the keys. May require KEY_USE to be
 !                                 | accessible.
 ! KEYS_EQUAL_FUNC <function>      | (optional) function that returns whether two keys
-!                                 | are equal. Defaults to `==`.
+!                                 | are equal. Defaults to `a == b` or `all(a == b)`,
+!                                 | depending on whether KEY_IS_ARRAY is defined.
+!                                 |
+! KEY_IS_ARRAY                    | helps fhash to choose an appropriate key comparison
+!                                 | function (see KEYS_EQUAL_FUNC)
 !                                 |
 ! VALUE_USE <use stmt>            | (optional) A use statement that is required to use
 !                                 | a specific type as a value for the FHASH
@@ -193,7 +197,11 @@ module FHASH_MODULE_NAME
 #ifdef KEYS_EQUAL_FUNC
     keys_equal = KEYS_EQUAL_FUNC(a, b)
 #else
+#ifdef KEY_IS_ARRAY
+    keys_equal = all(a == b)
+#else
     keys_equal = a == b
+#endif
 #endif
   end function
 
