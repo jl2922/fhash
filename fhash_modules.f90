@@ -79,30 +79,11 @@ end module ints_module
 #define SHORTNAME ints_double
 #include "fhash.f90"
 
-module int_module
-  implicit none
-
-  interface hash_value
-    module procedure hash_value_int
-  end interface
-
-  contains
-
-    function hash_value_int(int) result(hash)
-      integer, intent(in) :: int
-      integer :: hash
-
-      hash = int
-    end function
-end module
-
 ! Define the macros needed by fhash and include fhash.f90
-#define KEY_USE use int_module
 #define KEY_TYPE integer
 #define VALUE_USE use ints_module
 #define VALUE_TYPE type(ints_type), pointer
 !#define VALUE_TYPE_INIT null()
-#define HASH_FUNC hash_value
 #define SHORTNAME int_ints_ptr
 #ifndef __GFORTRAN__
 #define VALUE_POINTER
