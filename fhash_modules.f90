@@ -1,5 +1,4 @@
 ! Define the module for the key type.
-! Override the hash_value and == operator interface.
 module ints_module
 
   implicit none
@@ -11,12 +10,6 @@ module ints_module
   interface hash_value
     module procedure hash_value_ints
   end interface
-
-#ifdef __GFORTRAN__
-  interface assignment (=)
-    module procedure ints_ptr_assign
-  end interface
-#endif
 
 contains
 
@@ -57,15 +50,6 @@ contains
     ints_equal = .true.
 
   end function
-
-#ifdef __GFORTRAN__
-  subroutine ints_ptr_assign(lhs, rhs)
-    type(ints_type), pointer, intent(out) :: lhs
-    type(ints_type), target, intent(in) :: rhs
-    lhs => rhs
-  end subroutine
-#endif
-
 end module ints_module
 
 ! Define the macros needed by fhash and include fhash.f90
@@ -85,9 +69,7 @@ end module ints_module
 #define VALUE_TYPE type(ints_type), pointer
 !#define VALUE_TYPE_INIT null()
 #define SHORTNAME int_ints_ptr
-#ifndef __GFORTRAN__
 #define VALUE_POINTER
-#endif
 #ifdef VALUE_TYPE_INIT
 #define CHECK_ITERATOR_VALUE
 #endif
