@@ -7,8 +7,6 @@ program fhash_test
 
   implicit none
 
-  real :: start, finish
-
   call test_contructor()
   call test_reserve()
   call test_insert_and_get_ints_double()
@@ -17,13 +15,6 @@ program fhash_test
   call test_iterate()
 
   print *, 'ALL TESTS PASSED.'
-  print *, 'Start benchmark:'
-
-  call cpu_time(start)
-  call benchmark(n_ints=2, n_keys=10000000)
-  call cpu_time(finish)
-  print '("Time finish = ", G0.3," seconds.")', finish - start
-
   contains
 
   subroutine test_contructor()
@@ -209,28 +200,4 @@ program fhash_test
     
     call h%clear()
   end subroutine
-
-  subroutine benchmark(n_ints, n_keys)
-    integer, intent(in) :: n_ints, n_keys
-    type(fhash_type__ints_double) :: h
-    type(ints_type) :: key
-    real :: start, finish
-    integer :: i, j
-
-    print '("n_ints: ", I0, ", n_keys: ", I0)', n_ints, n_keys
-
-    call cpu_time(start)
-    call h%reserve(n_keys * 2)
-    allocate(key%ints(n_ints))
-    do i = 1, n_keys
-      do j = 1, n_ints
-        key%ints(j) = i + j
-      enddo
-      call h%set(key, (i + j) * 0.5_real64)
-    enddo
-    call cpu_time(finish)
-    print '("Time insert = ", G0.3," seconds.")', finish - start
-    call h%clear()
-  end subroutine
-
 end program
