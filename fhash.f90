@@ -22,20 +22,22 @@
 ! KEY_TYPE <typename>             | The type of the keys. May require KEY_USE to be
 !                                 | accessible.
 ! KEYS_EQUAL_FUNC <function>      | (optional) function that returns whether two keys
-!                                 | are equal. Defaults to `==`.
+!                                 | are equal. Defaults to `a == b` or `all(a == b)`,
+!                                 | depending on whether KEY_IS_ARRAY is defined.
+!                                 |
+! KEY_IS_ARRAY                    | helps fhash to choose an appropriate key comparison
+!                                 | function (see KEYS_EQUAL_FUNC)
 !                                 |
 ! VALUE_USE <use stmt>            | (optional) A use statement that is required to use
 !                                 | a specific type as a value for the FHASH
 ! VALUE_TYPE <typename>           | The type of the values. May require VALUE_USE to be
 !                                 | accessible.
+! 
+! HASH_FUNC                       | (optional) hash function name. Defaults to 'hash'.
 !                                 |
-! VALUE_VALUE                     | Flag indicating that the values in FHASH are value
-!                                 | values. This is the default. (see VALUE_POINTER)
-! VALUE_POINTER                   | Flag indicating that the values in FHASH are value
-!                                 | pointers.
+! VALUE_POINTER                   | (optional) If defined, the values are pointers.
 ! VALUE_ASSIGNMENT                | (internal) The assignment operator, do not set it
-!                                 | anywhere, it is configured based on VALUE_VALUE or
-!                                 | VALUE_POINTER
+!                                 | anywhere, it is configured based on VALUE_POINTER
 #endif
 
 #ifdef SHORTNAME
@@ -53,13 +55,6 @@
 #define FHASH_MODULE_NAME CONCAT(fhash_module__,SHORTNAME)
 #define FHASH_TYPE_NAME CONCAT(fhash_type__,SHORTNAME)
 #define FHASH_TYPE_ITERATOR_NAME CONCAT(fhash_type_iterator__,SHORTNAME)
-#endif
-  
-#undef VALUE_ASSIGNMENT
-#ifndef VALUE_VALUE
-#ifndef VALUE_POINTER
-#define VALUE_VALUE
-#endif
 #endif
 
 #ifdef VALUE_POINTER
@@ -160,6 +155,8 @@ module FHASH_MODULE_NAME
 
       ! Clear all the allocated memory
       procedure, non_overridable, public :: clear
+
+      procedure, non_overridable, private :: key2bucket
   end type
 
   type FHASH_TYPE_ITERATOR_NAME
@@ -177,6 +174,11 @@ module FHASH_MODULE_NAME
       procedure, non_overridable, public :: next
   end type
 
+  interface default_hash
+    module procedure :: default_hash__int
+    module procedure :: default_hash__int_array
+  end interface
+
   contains
   logical function keys_equal(a, b)
     KEY_TYPE, intent(in) :: a, b
@@ -184,7 +186,11 @@ module FHASH_MODULE_NAME
 #ifdef KEYS_EQUAL_FUNC
     keys_equal = KEYS_EQUAL_FUNC(a, b)
 #else
+#ifdef KEY_IS_ARRAY
+    keys_equal = all(a == b)
+#else
     keys_equal = a == b
+#endif
 #endif
   end function
 
@@ -253,8 +259,7 @@ module FHASH_MODULE_NAME
     integer :: bucket_id
     logical :: is_new
 
-    bucket_id = modulo(hash_value(key), this%n_buckets) + 1
-
+    bucket_id = this%key2bucket(key)
     call this%buckets(bucket_id)%node_set(key, value, is_new)
 
     if (is_new) this%n_keys = this%n_keys + 1
@@ -287,7 +292,7 @@ module FHASH_MODULE_NAME
     logical, optional, intent(out) :: success
     integer :: bucket_id
 
-    bucket_id = modulo(hash_value(key), this%n_buckets) + 1
+    bucket_id = this%key2bucket(key)
     call this%buckets(bucket_id)%node_get(key, value, success)
   end subroutine
 
@@ -318,7 +323,7 @@ module FHASH_MODULE_NAME
     integer :: bucket_id
     logical ::  locSuccess
     
-    bucket_id = modulo(hash_value(key), this%n_buckets) + 1
+    bucket_id = this%key2bucket(key)
     associate(first => this%buckets(bucket_id))
       if (.not. allocated(first%kv)) then
         locSuccess = .false.
@@ -363,6 +368,21 @@ module FHASH_MODULE_NAME
   subroutine clear(this)
     class(FHASH_TYPE_NAME), intent(out) :: this
   end subroutine
+  
+  integer function key2bucket(this, key) result(bucket_id)
+    class(FHASH_TYPE_NAME), intent(in) :: this
+    KEY_TYPE, intent(in) :: key
+
+    integer :: hash
+
+#ifdef HASH_FUNC
+    hash = HASH_FUNC(key)
+#else
+    hash = default_hash(key)
+#endif
+    bucket_id = modulo(hash, this%n_buckets) + 1
+  end function
+
 
   subroutine clear_rank1_nodes(nodes)
     type(node_type), intent(inout) :: nodes(:)
@@ -423,6 +443,27 @@ module FHASH_MODULE_NAME
 
   end subroutine
 
+  integer function default_hash__int(key) result(hash)
+    integer, intent(in) :: key
+
+    hash = key
+  end function
+
+  integer function default_hash__int_array(key) result(hash)
+    integer, intent(in) :: key(:)
+
+    real(kind(1.0d0)), parameter :: phi = (sqrt(5.0d0) + 1) / 2
+    integer, parameter :: magic_number = nint(2.0d0**bit_size(hash) * (1 - 1 / phi)) ! = 1640531527 for 32 bit
+    integer :: i
+
+    hash = 0
+    do i = 1, size(key)
+      ! This triggers an error in `gfortran` (version 9.3.0) with the `-ftrapv` option.
+      ! Compiler bug?
+      hash = ieor(hash, key(i) + magic_number + ishft(hash, 6) + ishft(hash, -2))
+    enddo
+  end function
+
   subroutine assert(condition, msg)
     use, intrinsic :: iso_fortran_env, only: error_unit
     logical, intent(in) :: condition
@@ -441,6 +482,7 @@ end module
 #undef VALUE_TYPE_INIT
 #undef VALUE_ASSIGNMENT
 #undef FHASH_TYPE_NAME
+#undef HASH_FUNC
 #undef FHASH_TYPE_ITERATOR_NAME
 #undef SHORTNAME
 #undef CONCAT
