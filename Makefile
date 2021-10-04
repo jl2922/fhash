@@ -1,20 +1,25 @@
 CPPC = g++
 FC := gfortran
-FFLAGS = -g -fbacktrace -std=f2018 -pedantic -Wall -Wextra -cpp
-FFLAGS += -Werror -Werror=shadow -Werror=intrinsic-shadow -Wuninitialized
-FFLAGS += -Wunreachable-code
-FFLAGS += -Waliasing -Wampersand -Wc-binding-type -Wcharacter-truncation
-FFLAGS += -Wdo-subscript -Wfunction-elimination -Wimplicit-interface -Wimplicit-procedure -Wintrinsic-shadow -Wintrinsics-std -Wline-truncation -Wno-tabs
-FFLAGS += -Wreal-q-constant -Wsurprising
-FFLAGS += -Wunused-parameter -Wfrontend-loop-interchange
-FFLAGS += -Wno-maybe-uninitialized -Wno-unused-dummy-argument -Wno-error=return-type
-FFLAGS += -Wno-unused-function
-FFLAGS += -Wno-conversion
+FFLAGS_BASIC = -g -fbacktrace -std=f2008 -pedantic -Wall -Wextra -cpp
+FFLAGS_BASIC += -Werror -Werror=shadow -Werror=intrinsic-shadow -Wuninitialized
+FFLAGS_BASIC += -Wunreachable-code -Wconversion
+FFLAGS_BASIC += -Waliasing -Wampersand -Wc-binding-type -Wcharacter-truncation
+FFLAGS_BASIC += -Wfunction-elimination -Wimplicit-interface -Wimplicit-procedure -Wintrinsic-shadow -Wintrinsics-std -Wline-truncation -Wno-tabs
+FFLAGS_BASIC += -Wreal-q-constant -Wsurprising
+FFLAGS_BASIC += -Wunused-parameter
+FFLAGS_BASIC += -Wno-maybe-uninitialized -Wno-unused-dummy-argument -Wno-error=return-type
+FFLAGS_BASIC += -Wno-unused-function
+FFLAGS_BASIC += -Wno-conversion
 
-FFLAGS_DEVEL = -O0 -fcheck=all -fbounds-check -Warray-bounds -Wstrict-overflow=5 -Wunderflow -fsanitize-address-use-after-scope -ffpe-trap=invalid,zero,overflow
+FFLAGS_DEVEL = -O0 -fcheck=all -fbounds-check -Warray-bounds -Wstrict-overflow=5 -Wunderflow -ffpe-trap=invalid,zero,overflow
 # FFLAGS_DEVEL += -ftrapv
 FFLAGS_RELEASE = -O3
-FFLAGS += $(FFLAGS_RELEASE)
+
+# not yet in gfortran 4.8.5:
+# FFLAGS_BASIC += -Wdo-subscript  -std=f2018  -Wfrontend-loop-interchange
+# FFLAGS_DEVEL += -fsanitize-address-use-after-scope
+
+FFLAGS = $(FFLAGS_BASIC) $(FFLAGS_DEVEL)
 
 .PHONY: all test clean ref
 
@@ -25,9 +30,9 @@ test: fhash_modules fhash_test.f90
         &&   ./fhash_test.out
 
 benchmark: fhash_modules.f90 benchmark.f90
-	$(FC) -cpp -O3 benchmark.f90 -o fhash_benchmark.out  && \
+	$(FC) $(FFLAGS_BASIC) $(FFLAGS_RELEASE) benchmark.f90 -o fhash_benchmark.out  && \
     $(CPPC) -std=c++11 -O3  benchmark.cc  -o stl_benchmark.out && \
-	./stl_benchmark.out  &&  ./fhash_benchmark.out
+	./fhash_benchmark.out  &&  ./stl_benchmark.out
 
 ref: benchmark.cc
 	g++ -O3 -std=c++14 benchmark.cc -o ref.out && ./ref.out
