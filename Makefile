@@ -1,3 +1,4 @@
+CPPC = g++
 FC := gfortran
 FFLAGS = -g -fbacktrace -std=f2018 -pedantic -Wall -Wextra -cpp
 FFLAGS += -Werror -Werror=shadow -Werror=intrinsic-shadow -Wuninitialized
@@ -22,6 +23,11 @@ all: test
 test: fhash_modules fhash_test.f90
 	$(FC) $(FFLAGS) fhash_modules.f90 fhash_test.f90 -o fhash_test.out  \
         &&   ./fhash_test.out
+
+benchmark: fhash_modules.f90 benchmark.f90
+	$(FC) -cpp -O3 benchmark.f90 -o fhash_benchmark.out  && \
+    $(CPPC) -std=c++11 -O3  benchmark.cc  -o stl_benchmark.out && \
+	./stl_benchmark.out  &&  ./fhash_benchmark.out
 
 ref: benchmark.cc
 	g++ -O3 -std=c++14 benchmark.cc -o ref.out && ./ref.out
