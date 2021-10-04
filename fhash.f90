@@ -21,6 +21,8 @@
 !                                 | a specific type as a key for the FHASH
 ! KEY_TYPE <typename>             | The type of the keys. May require KEY_USE to be
 !                                 | accessible.
+! KEYS_EQUAL_FUNC <function>      | (optional) function that returns whether two keys
+!                                 | are equal. Defaults to `==`.
 !                                 |
 ! VALUE_USE <use stmt>            | (optional) A use statement that is required to use
 !                                 | a specific type as a value for the FHASH
@@ -176,6 +178,15 @@ module FHASH_MODULE_NAME
   end type
 
   contains
+  logical function keys_equal(a, b)
+    KEY_TYPE, intent(in) :: a, b
+
+#ifdef KEYS_EQUAL_FUNC
+    keys_equal = KEYS_EQUAL_FUNC(a, b)
+#else
+    keys_equal = a == b
+#endif
+  end function
 
   function bucket_count(this)
     class(FHASH_TYPE_NAME), intent(in) :: this
@@ -260,7 +271,7 @@ module FHASH_MODULE_NAME
       this%kv%key = key
       this%kv%value VALUE_ASSIGNMENT value
       if (present(is_new)) is_new = .true.
-    else if (this%kv%key == key) then
+    else if (keys_equal(this%kv%key, key)) then
       this%kv%value VALUE_ASSIGNMENT value
       if (present(is_new)) is_new = .false.
     else
@@ -289,7 +300,7 @@ module FHASH_MODULE_NAME
     if (.not. allocated(this%kv)) then
       ! Not found. (Initial node in the bucket not set)
       if (present(success)) success = .false.
-    else if (this%kv%key == key) then
+    else if (keys_equal(this%kv%key, key)) then
       value VALUE_ASSIGNMENT this%kv%value
       if (present(success)) success = .true.
     else if (associated(this%next)) then
@@ -311,7 +322,7 @@ module FHASH_MODULE_NAME
     associate(first => this%buckets(bucket_id))
       if (.not. allocated(first%kv)) then
         locSuccess = .false.
-      elseif (.not. first%kv%key == key) then
+      elseif (.not. keys_equal(first%kv%key, key)) then
         call node_remove(first%next, key, locSuccess, first)
       elseif (associated(first%next)) then
         first%kv%key =  first%next%kv%key
@@ -337,7 +348,7 @@ module FHASH_MODULE_NAME
     if (.not. allocated(this%kv)) then
       ! Not found. (Initial node in the bucket not set)
       success = .false.
-    else if (this%kv%key == key) then
+    else if (keys_equal(this%kv%key, key)) then
       last%next => this%next
       nullify(this%next)
       deallocate(this%kv)
@@ -425,6 +436,7 @@ module FHASH_MODULE_NAME
 end module
 
 #undef KEY_TYPE
+#undef KEYS_EQUAL_FUNC
 #undef VALUE_TYPE
 #undef VALUE_TYPE_INIT
 #undef VALUE_ASSIGNMENT
