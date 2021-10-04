@@ -62,6 +62,17 @@
 #else
 #define VALUE_ASSIGNMENT =
 #endif
+
+! Not all compilers implement finalization:
+#if defined __GFORTRAN__ && __GNUC__ <= 5
+#else
+#   define _FINAL_IS_IMPLEMENTED
+#endif
+#ifdef _FINAL_IS_IMPLEMENTED
+#   define _FINAL_TYPEORCLASS type
+#else
+#   define _FINAL_TYPEORCLASS class
+#endif
   
 module FHASH_MODULE_NAME
 #undef FHASH_MODULE_NAME
@@ -120,9 +131,16 @@ module FHASH_MODULE_NAME
       ! Deallocate and nullify the next pointer.
       !
       ! Need separate finalizers because a resursive procedure cannot be elemental.
+#ifdef _FINAL_IS_IMPLEMENTED
       final :: clear_scalar_node
       final :: clear_rank1_nodes
-  end type
+#else
+      ! Old `gfortran` versions think the passed dummy must be a scalar:
+      generic, public :: clear => clear_scalar_node
+      procedure, non_overridable, private :: clear_scalar_node
+      ! procedure, non_overridable, private :: clear_rank1_nodes
+#endif
+    end type
 
   type FHASH_TYPE_NAME
     private
@@ -385,7 +403,7 @@ module FHASH_MODULE_NAME
 
 
   subroutine clear_rank1_nodes(nodes)
-    type(node_type), intent(inout) :: nodes(:)
+    _FINAL_TYPEORCLASS(node_type), intent(inout) :: nodes(:)
 
     integer :: i
 
@@ -395,7 +413,7 @@ module FHASH_MODULE_NAME
   end subroutine
 
   recursive subroutine clear_scalar_node(node)
-    type(node_type), intent(inout) :: node
+    _FINAL_TYPEORCLASS(node_type), intent(inout) :: node
 
     if (associated(node%next)) then
       call clear_scalar_node(node%next)
@@ -479,6 +497,8 @@ module FHASH_MODULE_NAME
   end subroutine
 end module
 
+#undef _FINAL_IS_IMPLEMENTED
+#undef _FINAL_TYPEORCLASS
 #undef KEY_TYPE
 #undef KEYS_EQUAL_FUNC
 #undef VALUE_TYPE
