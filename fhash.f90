@@ -241,7 +241,7 @@ module FHASH_MODULE_NAME
     endif
   end function
 
-  subroutine reserve(this, n_buckets)
+  impure elemental subroutine reserve(this, n_buckets)
     class(FHASH_TYPE_NAME), intent(inout) :: this
     integer, intent(in) :: n_buckets
 
@@ -383,7 +383,7 @@ module FHASH_MODULE_NAME
     endif
   end subroutine
 
-  subroutine clear(this)
+  impure elemental subroutine clear(this)
     class(FHASH_TYPE_NAME), intent(out) :: this
   end subroutine
   
