@@ -8,7 +8,7 @@ Implemention of the GCC hashmap structure in Fortran. It supports any types of k
 
 and, optionally,
 
-* `KEYS_EQUAL_FUNC`: the comparison operator for the keys (defaults to either `a == b` or `all(a == b)`, depending on whether `KEY_IS_ARRAY` is defined.);
+* `KEYS_EQUAL_FUNC`: the comparison operator for the keys (defaults to either `a == b` or `all(a == b)`, depending on whether the key is a scalar;
 
 * `HASH_FUNC`, which takes a key and returns a hash integer. There are defaults for integers and integer arrays;
 

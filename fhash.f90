@@ -23,10 +23,7 @@
 !                                 | accessible.
 ! KEYS_EQUAL_FUNC <function>      | (optional) function that returns whether two keys
 !                                 | are equal. Defaults to `a == b` or `all(a == b)`,
-!                                 | depending on whether KEY_IS_ARRAY is defined.
-!                                 |
-! KEY_IS_ARRAY                    | helps fhash to choose an appropriate key comparison
-!                                 | function (see KEYS_EQUAL_FUNC)
+!                                 | depending on whether the key is a scalar.
 !                                 |
 ! VALUE_USE <use stmt>            | (optional) A use statement that is required to use
 !                                 | a specific type as a value for the FHASH
@@ -197,6 +194,10 @@ module FHASH_MODULE_NAME
     module procedure :: default_hash__int_array
   end interface
 
+  interface all
+    module procedure :: scalar_all
+  end interface
+
   contains
   logical function keys_equal(a, b)
     KEY_TYPE, intent(in) :: a, b
@@ -204,11 +205,7 @@ module FHASH_MODULE_NAME
 #ifdef KEYS_EQUAL_FUNC
     keys_equal = KEYS_EQUAL_FUNC(a, b)
 #else
-#ifdef KEY_IS_ARRAY
     keys_equal = all(a == b)
-#else
-    keys_equal = a == b
-#endif
 #endif
   end function
 
@@ -483,6 +480,12 @@ module FHASH_MODULE_NAME
       ! Compiler bug?
       hash = ieor(hash, key(i) + magic_number + ishft(hash, 6) + ishft(hash, -2))
     enddo
+  end function
+
+  logical function scalar_all(scal)
+    logical, intent(in) :: scal
+
+    scalar_all = scal
   end function
 
   subroutine assert(condition, msg)

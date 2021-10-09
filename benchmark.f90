@@ -4,7 +4,6 @@
 #define FHASH_TYPE_NAME int_intsptr_fhash_type
 #define FHASH_TYPE_ITERATOR_NAME int_intsptr_fhash_iter_type
 #define KEY_TYPE integer, dimension(KEY_ARRAY_SIZE)
-#define KEY_IS_ARRAY
 #define VALUE_TYPE real(real64)
 #define VALUE_USE use, intrinsic :: iso_fortran_env, only: real64
 ! #define VALUE_TYPE_INIT null()
