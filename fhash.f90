@@ -171,6 +171,9 @@ module FHASH_MODULE_NAME
       ! Clear all the allocated memory
       procedure, non_overridable, public :: clear
 
+      generic, public :: assignment(=) => deepcopy_fhash
+      procedure, non_overridable, private :: deepcopy_fhash
+
       procedure, non_overridable, private :: key2bucket
   end type
 
@@ -378,6 +381,38 @@ module FHASH_MODULE_NAME
       call this%next%node_remove(key, success, this)
     else
       success = .false.
+    endif
+  end subroutine
+
+  impure elemental subroutine deepcopy_fhash(lhs, rhs)
+    class(FHASH_TYPE_NAME), intent(out) :: lhs
+    type(FHASH_TYPE_NAME), intent(in) :: rhs
+
+    integer :: i
+
+    if (.not. allocated(rhs%buckets)) return
+
+    lhs%n_buckets = rhs%n_buckets
+    lhs%n_keys = rhs%n_keys
+    allocate(lhs%buckets(size(rhs%buckets)))
+    do i = 1, size(lhs%buckets)
+      call deepcopy_node(rhs%buckets(i), lhs%buckets(i))
+    enddo
+  end subroutine
+
+  recursive subroutine deepcopy_node(this, copy)
+    class(node_type), intent(in) :: this
+    type(node_type), intent(out) :: copy
+
+    if (.not. allocated(this%kv)) then
+      call assert(.not. associated(this%next), 'internal error: node has a "next" pointer, but it''s kv pair has not been set')
+    else
+      allocate(copy%kv, source=this%kv)
+    endif
+
+    if (associated(this%next)) then
+      allocate(copy%next)
+      call deepcopy_node(this%next, copy%next)
     endif
   end subroutine
 

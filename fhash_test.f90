@@ -1,10 +1,91 @@
+module tests_mod
+  use ints_module
+  use fhash_module__ints_double
+  use, intrinsic :: iso_fortran_env
+  implicit none
+
+contains
+  subroutine test_assignment()
+    type(fhash_type__ints_double) :: a, b, c
+    type(ints_type) :: keys(100)
+    real(real64) :: values(size(keys))
+
+    integer :: i
+
+    do i = 1, size(keys)
+      allocate(keys(i)%ints(3))
+      keys(i)%ints = i
+      values(i) = i
+    enddo
+
+    call a%reserve(10)
+    do i = 1, size(keys)
+      call a%set(keys(i), values(i))
+    enddo
+    call check_kv(a)
+
+    c = a
+    call check_kv(a)
+    call check_kv(c)
+    
+    call b%reserve(1)
+    b = a
+    call check_kv(a)
+    call check_kv(b)
+    call a%clear()
+    call check_kv(b)
+
+    a = b
+    call check_kv(a)
+    call check_kv(b)
+    call a%clear()
+    call check_kv(b)
+  contains
+      subroutine check_kv(fhash)
+        type(fhash_type__ints_double), intent(in) :: fhash
+
+        type(fhash_type_iterator__ints_double) :: iter
+        type(ints_type) :: key
+        real(real64) :: val
+        integer :: i
+        integer :: status
+        logical :: have_seen(size(keys))
+
+        have_seen = .false.
+        call iter%begin(fhash)
+        do
+          call iter%next(key, val, status)
+          if (status /= 0) exit
+
+          i = nint(val)
+          call assert(abs(val - i) <= 10*epsilon(val), "check_kv: bad value")
+          call assert(key%ints == i, "check_kv: bad key")
+          call assert(.not. have_seen(i), "check_kv: found the same key twice")
+          have_seen(i) = .true.
+        enddo
+        call assert(all(have_seen), "check_kv: did not get all keys from the iterator")
+      end subroutine
+  end subroutine
+
+  impure elemental subroutine assert(condition, msg)
+    use, intrinsic :: iso_fortran_env, only: error_unit
+    logical, intent(in) :: condition
+    character(*), intent(in) :: msg
+
+    if (.not. condition) then
+      write(error_unit, '(a)') "FAILED A TEST: " // msg
+      error stop
+    endif
+  end subroutine
+end module
+
 program fhash_test
 
   use, intrinsic :: iso_fortran_env
   use fhash_module__ints_double
   use fhash_module__int_ints_ptr
   use ints_module
-
+  use tests_mod
   implicit none
 
   call test_contructor()
@@ -13,6 +94,7 @@ program fhash_test
   call test_insert_and_get_int_ints_ptr()
   call test_insert_get_and_remove_int_ints_ptr()
   call test_iterate()
+  call test_assignment()
 
   print *, 'ALL TESTS PASSED.'
   contains
@@ -150,7 +232,6 @@ program fhash_test
     call h%clear()
     
     deallocate(pValues)
-    
   end subroutine  
   
   subroutine test_iterate()
