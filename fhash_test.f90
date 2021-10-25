@@ -5,6 +5,31 @@ module tests_mod
   implicit none
 
 contains
+  subroutine test_deep_storage_size()
+    type(fhash_type__ints_double) :: h
+    type(ints_type) :: key
+    
+    integer :: i
+    integer :: s
+
+    s = h%deep_storage_size(0123)
+    
+    call h%reserve(10)
+    allocate(key%ints(2))
+    
+    do i = 1, 3
+      key%ints = i
+      call h%set(key, real(i, kind=real64))
+    enddo
+    s = h%deep_storage_size(0123)
+    
+    do i = 1, 20
+      key%ints = i
+      call h%set(key, real(i, kind=real64))
+    enddo
+    s = h%deep_storage_size(0123)
+  end subroutine
+
   subroutine test_assignment()
     type(fhash_type__ints_double) :: a, b, c
     type(ints_type) :: keys(100)
@@ -94,6 +119,7 @@ program fhash_test
   call test_insert_and_get_int_ints_ptr()
   call test_insert_get_and_remove_int_ints_ptr()
   call test_iterate()
+  call test_deep_storage_size()
   call test_assignment()
 
   print *, 'ALL TESTS PASSED.'

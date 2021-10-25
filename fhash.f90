@@ -168,6 +168,10 @@ module FHASH_MODULE_NAME
       ! Remove the value with the given key.
       procedure, non_overridable, public :: remove
 
+      ! Return the accumalated storage size of an fhash, including the underlying pointers.
+      ! Takes the bit size of a key-value pair as an argument.
+      procedure, non_overridable, public :: deep_storage_size => fhash_deep_storage_size
+
       ! Clear all the allocated memory
       procedure, non_overridable, public :: clear
 
@@ -415,6 +419,28 @@ module FHASH_MODULE_NAME
       call deepcopy_node(this%next, copy%next)
     endif
   end subroutine
+
+  impure elemental integer function fhash_deep_storage_size(this, keyval_ss) result(s)
+    class(FHASH_TYPE_NAME), intent(in) :: this
+    integer, intent(in) :: keyval_ss
+
+    integer :: i
+
+    s = storage_size(this)
+    if (allocated(this%buckets)) then
+      do i = 1, size(this%buckets)
+        s = s + node_deep_storage_size(this%buckets(i), keyval_ss)
+      enddo
+    endif
+  end function
+
+  recursive integer function node_deep_storage_size(node, keyval_ss) result(s)
+    type(node_type), intent(in) :: node
+    integer, intent(in) :: keyval_ss
+
+    s = storage_size(node) + keyval_ss
+    if (associated(node%next)) s = s + node_deep_storage_size(node%next, keyval_ss)
+  end function
 
   impure elemental subroutine clear(this)
     class(FHASH_TYPE_NAME), intent(out) :: this
