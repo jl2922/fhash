@@ -105,12 +105,6 @@ module FHASH_MODULE_NAME
       ! Otherwise, defer to the next node (allocate if not allocated)
       procedure, non_overridable :: node_set
 
-      ! If kv is not allocated, fail and return 0.
-      ! If key is present and the same as the key passed in, return the value in kv.
-      ! If next pointer is associated, delegate to it.
-      ! Otherwise, fail and return 0.
-      procedure, non_overridable :: node_get
-
       ! If kv is not allocated, fail and return
       ! If key is present and node is first in bucket, set first node in bucket to
       !   the next node of first. Return success
@@ -144,7 +138,7 @@ module FHASH_MODULE_NAME
 
     integer :: n_buckets = 0
     integer :: n_keys = 0
-    type(node_type), allocatable :: buckets(:)
+    type(node_type), contiguous, pointer :: buckets(:) => null()
 
     contains
       ! Returns the number of buckets.
@@ -165,6 +159,10 @@ module FHASH_MODULE_NAME
       ! Get the value at the given key.
       procedure, non_overridable, public :: get
 
+#ifndef VALUE_POINTER
+      procedure, non_overridable, public :: get_ptr
+#endif
+
       ! Remove the value with the given key.
       procedure, non_overridable, public :: remove
 
@@ -174,7 +172,9 @@ module FHASH_MODULE_NAME
 
       ! Clear all the allocated memory
       procedure, non_overridable, public :: clear
-
+#ifdef _FINAL_IS_IMPLEMENTED
+      final :: clear_final
+#endif
       generic, public :: assignment(=) => deepcopy_fhash
       procedure, non_overridable, private :: deepcopy_fhash
 
@@ -220,13 +220,19 @@ module FHASH_MODULE_NAME
     class(FHASH_TYPE_NAME), intent(in) :: this
     integer :: bucket_count
 
-    bucket_count = this%n_buckets
+    if (.not. associated(this%buckets)) then
+      bucket_count = 0
+    else
+      bucket_count = size(this%buckets)
+    endif
   end function
 
   function n_collisions(this)
     class(FHASH_TYPE_NAME), intent(in) :: this
     integer :: n_collisions
     integer :: i
+
+    call assert(associated(this%buckets), "n_collisions: fhash has not been initialized")
 
     n_collisions = 0
     do i = 1, this%n_buckets
@@ -282,6 +288,8 @@ module FHASH_MODULE_NAME
     integer :: bucket_id
     logical :: is_new
 
+    call assert(associated(this%buckets), "set: fhash has not been initialized")
+
     bucket_id = this%key2bucket(key)
     call this%buckets(bucket_id)%node_set(key, value, is_new)
 
@@ -313,14 +321,21 @@ module FHASH_MODULE_NAME
     KEY_TYPE, intent(in) :: key
     VALUE_TYPE, intent(out) :: value
     logical, optional, intent(out) :: success
+
     integer :: bucket_id
 
+    call assert(associated(this%buckets), "get: fhash has not been initialized")
+
     bucket_id = this%key2bucket(key)
-    call this%buckets(bucket_id)%node_get(key, value, success)
+    call node_get(this%buckets(bucket_id), key, value, success)
   end subroutine
 
   recursive subroutine node_get(this, key, value, success)
-    class(node_type), intent(in) :: this
+    ! If kv is not allocated, fail and return 0.
+    ! If key is present and the same as the key passed in, return the value in kv.
+    ! If next pointer is associated, delegate to it.
+    ! Otherwise, fail and return 0.
+    type(node_type), intent(in) :: this
     KEY_TYPE, intent(in) :: key
     VALUE_TYPE, intent(out) :: value
     logical, optional, intent(out) :: success
@@ -332,12 +347,43 @@ module FHASH_MODULE_NAME
       value VALUE_ASSIGNMENT this%kv%value
       if (present(success)) success = .true.
     else if (associated(this%next)) then
-      call this%next%node_get(key, value, success)
-    else
-      if (present(success)) success = .false.
+      call node_get(this%next, key, value, success)
+    elseif (present(success)) then
+      success = .false.
     endif
   end subroutine
   
+#ifndef VALUE_POINTER
+  function get_ptr(this, key) result(value)
+    class(FHASH_TYPE_NAME), intent(in) :: this
+    KEY_TYPE, intent(in) :: key
+    VALUE_TYPE, pointer :: value
+
+    integer :: bucket_id
+
+    call assert(associated(this%buckets), "get: fhash has not been initialized")
+
+    bucket_id = this%key2bucket(key)
+    value => node_get_ptr(this%buckets(bucket_id), key)
+  end function
+
+  recursive function node_get_ptr(this, key) result(value)
+    type(node_type), target, intent(in) :: this
+    KEY_TYPE, intent(in) :: key
+    VALUE_TYPE, pointer :: value
+
+    if (.not. allocated(this%kv)) then
+      value => null()
+    else if (keys_equal(this%kv%key, key)) then
+      value => this%kv%value
+    else if (.not. associated(this%next)) then
+      value => null()
+    else
+      value => node_get_ptr(this%next, key)
+    endif
+  end function
+#endif
+
   subroutine remove(this, key, success)
     class(FHASH_TYPE_NAME), intent(inout) :: this
     KEY_TYPE, intent(in) :: key
@@ -346,6 +392,8 @@ module FHASH_MODULE_NAME
     integer :: bucket_id
     logical ::  locSuccess
     
+    call assert(associated(this%buckets), "remove: fhash has not been initialized")
+
     bucket_id = this%key2bucket(key)
     associate(first => this%buckets(bucket_id))
       if (.not. allocated(first%kv)) then
@@ -394,7 +442,7 @@ module FHASH_MODULE_NAME
 
     integer :: i
 
-    if (.not. allocated(rhs%buckets)) return
+    if (.not. associated(rhs%buckets)) return
 
     lhs%n_buckets = rhs%n_buckets
     lhs%n_keys = rhs%n_keys
@@ -427,7 +475,7 @@ module FHASH_MODULE_NAME
     integer :: i
 
     s = storage_size(this)
-    if (allocated(this%buckets)) then
+    if (associated(this%buckets)) then
       do i = 1, size(this%buckets)
         s = s + node_deep_storage_size(this%buckets(i), keyval_ss)
       enddo
@@ -443,9 +491,21 @@ module FHASH_MODULE_NAME
   end function
 
   impure elemental subroutine clear(this)
-    class(FHASH_TYPE_NAME), intent(out) :: this
+    class(FHASH_TYPE_NAME), intent(inout) :: this
+
+    this%n_buckets = 0
+    this%n_keys = 0
+    if (associated(this%buckets)) deallocate(this%buckets)
   end subroutine
-  
+
+#ifdef _FINAL_IS_IMPLEMENTED
+  impure elemental subroutine clear_final(this)
+    type(FHASH_TYPE_NAME), intent(inout) :: this
+
+    call this%clear()
+  end subroutine
+#endif
+
   integer function key2bucket(this, key) result(bucket_id)
     class(FHASH_TYPE_NAME), intent(in) :: this
     KEY_TYPE, intent(in) :: key
@@ -484,8 +544,9 @@ module FHASH_MODULE_NAME
     class(FHASH_TYPE_ITERATOR_NAME), intent(inout) :: this
     type(FHASH_TYPE_NAME), target, intent(in) :: fhash_target
 
+    call assert(associated(fhash_target%buckets), "cannot start iteration when fhash is empty")
+
     this%bucket_id = 1
-    call assert(allocated(fhash_target%buckets), "cannot start iteration when fhash is empty")
     this%node_ptr => fhash_target%buckets(1)
     this%fhash_ptr => fhash_target
   end subroutine
@@ -496,6 +557,8 @@ module FHASH_MODULE_NAME
     VALUE_TYPE, intent(out) :: value
     integer, optional, intent(out) :: status
 
+    call assert(associated(this%fhash_ptr), "next: iterator has not been initialized")
+    
     do
       if (associated(this%node_ptr)) then
         if (allocated(this%node_ptr%kv)) exit
@@ -517,7 +580,6 @@ module FHASH_MODULE_NAME
     value VALUE_ASSIGNMENT this%node_ptr%kv%value
     if (present(status)) status = 0
     this%node_ptr => this%node_ptr%next
-
   end subroutine
 
   integer function default_hash__int(key) result(hash)

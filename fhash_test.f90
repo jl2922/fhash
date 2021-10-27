@@ -131,15 +131,17 @@ program fhash_test
   end subroutine
 
   subroutine test_reserve()
-    type(fhash_type__ints_double) h
+    type(fhash_type__ints_double) :: h
+
     call h%reserve(3)
-    if (h%bucket_count() /= 5) stop 'expect to reserve 5 buckets'
+    call assert(h%bucket_count() == 5, 'expected to reserve 5 buckets')
   end subroutine
 
   subroutine test_insert_and_get_ints_double()
     type(fhash_type__ints_double) :: h
     type(ints_type) :: key
     real(real64) :: value
+    real(real64), pointer :: val_ptr
     integer :: i
     logical :: success
     call h%reserve(5)
@@ -148,11 +150,20 @@ program fhash_test
     key%ints = 0
     do i = 1, 10
       key%ints(i) = i
+
       call h%get(key, value, success)
       if (success) stop 'expect not found'
+
+      val_ptr => h%get_ptr(key)
+      call assert(.not. associated(val_ptr), "expected a null pointer")
+
       call h%set(key, i * 0.5_real64)
       call h%get(key, value)
       if (abs(value - i * 0.5_real64) > epsilon(value)) stop 'expect to get 0.5 i'
+
+      val_ptr => h%get_ptr(key)
+      call assert(associated(val_ptr), "expected a, associated pointer")
+      call assert(abs(val_ptr - i * 0.5_real64) <= epsilon(val_ptr), 'expect to get pointer value of 0.5 i')
     enddo
     if (h%key_count() /= 10) stop 'expect key count to be 10'
     if (h%n_collisions() >= 10 .or. h%n_collisions() < 5) stop 'expect n_collisions in [5, 10)'
