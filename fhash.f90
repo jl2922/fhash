@@ -136,7 +136,6 @@ module FHASH_MODULE_NAME
   type FHASH_TYPE_NAME
     private
 
-    integer :: n_buckets = 0
     integer :: n_keys = 0
     type(node_type), contiguous, pointer :: buckets(:) => null()
 
@@ -235,7 +234,7 @@ module FHASH_MODULE_NAME
     call assert(associated(this%buckets), "n_collisions: fhash has not been initialized")
 
     n_collisions = 0
-    do i = 1, this%n_buckets
+    do i = 1, size(this%buckets)
       n_collisions = n_collisions + node_depth(this%buckets(i)) - 1
     enddo
   end function
@@ -267,8 +266,7 @@ module FHASH_MODULE_NAME
 
     do i = 1, size(sizes)
       if (sizes(i) >= n_buckets) then
-        this%n_buckets = sizes(i)
-        allocate(this%buckets(this%n_buckets))
+        allocate(this%buckets(sizes(i)))
         exit
       endif
     enddo
@@ -360,11 +358,15 @@ module FHASH_MODULE_NAME
     VALUE_TYPE, pointer :: value
 
     integer :: bucket_id
+    type(node_type), pointer :: bucket
 
     call assert(associated(this%buckets), "get: fhash has not been initialized")
-
+    
     bucket_id = this%key2bucket(key)
-    value => node_get_ptr(this%buckets(bucket_id), key)
+    call assert(1 <= bucket_id .and. bucket_id <= size(this%buckets), "get: fhash has not been initialized")
+    bucket => this%buckets(bucket_id)
+
+    value => node_get_ptr(bucket, key)
   end function
 
   recursive function node_get_ptr(this, key) result(value)
@@ -444,7 +446,6 @@ module FHASH_MODULE_NAME
 
     if (.not. associated(rhs%buckets)) return
 
-    lhs%n_buckets = rhs%n_buckets
     lhs%n_keys = rhs%n_keys
     allocate(lhs%buckets(size(rhs%buckets)))
     do i = 1, size(lhs%buckets)
@@ -493,7 +494,6 @@ module FHASH_MODULE_NAME
   impure elemental subroutine clear(this)
     class(FHASH_TYPE_NAME), intent(inout) :: this
 
-    this%n_buckets = 0
     this%n_keys = 0
     if (associated(this%buckets)) deallocate(this%buckets)
   end subroutine
@@ -517,7 +517,7 @@ module FHASH_MODULE_NAME
 #else
     hash = default_hash(key)
 #endif
-    bucket_id = modulo(hash, this%n_buckets) + 1
+    bucket_id = modulo(hash, size(this%buckets)) + 1
   end function
 
 
@@ -564,7 +564,7 @@ module FHASH_MODULE_NAME
         if (allocated(this%node_ptr%kv)) exit
       endif
 
-      if (this%bucket_id < this%fhash_ptr%n_buckets) then
+      if (this%bucket_id < size(this%fhash_ptr%buckets)) then
         this%bucket_id = this%bucket_id + 1
         this%node_ptr => this%fhash_ptr%buckets(this%bucket_id)
       else
