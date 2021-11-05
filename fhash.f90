@@ -56,6 +56,7 @@
 #   define FHASH_MODULE_NAME CONCAT(fhash_module__,SHORTNAME)
 #   define FHASH_TYPE_NAME CONCAT(fhash_type__,SHORTNAME)
 #   define FHASH_TYPE_ITERATOR_NAME CONCAT(fhash_type_iterator__,SHORTNAME)
+#   define FHASH_TYPE_KV_TYPE_NAME CONCAT(fhash_type_kv__,SHORTNAME)
 #endif
 
 #ifdef VALUE_POINTER
@@ -169,6 +170,9 @@ module FHASH_MODULE_NAME
 
       ! Remove the value with the given key.
       procedure, non_overridable, public :: remove
+
+      ! Get the key/value pairs as a list:
+      procedure, non_overridable, public :: as_list
 
       ! Return the accumalated storage size of an fhash, including the underlying pointers.
       ! Takes the bit size of a key-value pair as an argument.
@@ -441,6 +445,23 @@ module FHASH_MODULE_NAME
     else
       success = .false.
     endif
+  end subroutine
+
+  subroutine as_list(this, kv_list)
+    class(FHASH_TYPE_NAME), target, intent(in) :: this
+    type(FHASH_TYPE_KV_TYPE_NAME), allocatable, intent(out) :: kv_list(:)
+
+    integer :: i, n
+    type(FHASH_TYPE_ITERATOR_NAME) :: iter
+    integer :: iter_stat
+
+    n = this%key_count()
+    allocate(kv_list(n))
+    call iter%begin(this)
+    do i = 1, n
+      call iter%next(kv_list(i)%key, kv_list(i)%value, iter_stat)
+      call assert(iter_stat == 0, "as_list: internal error: iterator stopped unexpectedly")
+    enddo
   end subroutine
 
   impure elemental subroutine deepcopy_fhash(lhs, rhs)

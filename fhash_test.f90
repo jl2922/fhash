@@ -5,6 +5,31 @@ module tests_mod
   implicit none
 
 contains
+  subroutine test_as_list
+    use fhash_module__i2char
+
+    type(fhash_type__i2char) :: h
+    type(fhash_type_kv__i2char), allocatable :: kv_list(:)
+    character(10) :: val
+    integer :: i
+    logical :: success
+
+    call h%reserve(3)
+    call h%set(1, "one       ")
+    call h%set(0, "zero      ")
+    call h%set(4, "four      ")
+    call h%set(7, "seven     ")
+    
+    call h%as_list(kv_list)
+    call assert(allocated(kv_list), "kv_list not allocated")
+    call assert(size(kv_list) == 4, "kv_list has bad size")
+    do i = 1, size(kv_list)
+      call h%get(kv_list(i)%key, val, success)
+      call assert(success, "key in list was not in hash")
+      call assert(val == kv_list(i)%value, "bad value in list")
+    enddo
+  end subroutine
+
   subroutine test_deep_storage_size()
     type(fhash_type__ints_double) :: h
     type(ints_type) :: key
@@ -119,6 +144,7 @@ program fhash_test
   call test_insert_and_get_int_ints_ptr()
   call test_insert_get_and_remove_int_ints_ptr()
   call test_iterate()
+  call test_as_list()
   call test_deep_storage_size()
   call test_assignment()
 
