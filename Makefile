@@ -20,6 +20,10 @@ FFLAGS_RELEASE = -O3
 # FFLAGS_BASIC += -Wdo-subscript  -std=f2018  -Wfrontend-loop-interchange
 # FFLAGS_DEVEL += -fsanitize-address-use-after-scope
 
+# FC = ifort
+# FFLAGS_BASIC = -g -traceback -cpp
+# FFLAGS_DEVEL = -O0
+
 FFLAGS = $(FFLAGS_DEVEL) $(FFLAGS_BASIC)
 
 .PHONY: all test clean ref
