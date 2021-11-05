@@ -41,14 +41,13 @@ contains
       call assert(val == kv_list(i)%value, "bad value in sorted list")
     enddo
     call assert(kv_list(2:)%key - kv_list(:size(kv_list)-1)%key > 0, "sorted list should be strictly increasing")
-
-  contains
-    integer function compare_ints(a, b)
-      integer, intent(in) :: a, b
-
-      compare_ints = a - b
-    end function
   end subroutine
+
+  integer function compare_ints(a, b)
+    integer, intent(in) :: a, b
+
+    compare_ints = a - b
+  end function
 
   subroutine test_deep_storage_size()
     type(fhash_type__ints_double) :: h

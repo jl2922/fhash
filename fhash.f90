@@ -59,6 +59,10 @@
 #   define FHASH_TYPE_KV_TYPE_NAME CONCAT(fhash_type_kv__,SHORTNAME)
 #endif
 
+! For some bizar reason both gfortran-10 and ifort-2021.4 fail to compile, unless
+! this function has a unique name for every time that this file is included:
+#define __COMPARE_AT_IDX CONCAT(fhash_type_compare__,SHORTNAME)
+
 #ifdef VALUE_POINTER
 #   define VALUE_ASSIGNMENT =>
 #else
@@ -214,7 +218,17 @@ module FHASH_MODULE_NAME
     module procedure :: scalar_all
   end interface
 
-  contains
+  interface
+    integer function compare_keys_i(a, b)
+      import
+      implicit none
+      KEY_TYPE, intent(in) :: a, b
+    end function
+  end interface
+  procedure(compare_keys_i), pointer :: global_compare_ptr => null()
+  type(FHASH_TYPE_KV_TYPE_NAME), pointer :: global_sorted_kv_list_ptr(:) => null()
+
+contains
   logical function keys_equal(a, b)
     KEY_TYPE, intent(in) :: a, b
 
@@ -467,27 +481,23 @@ module FHASH_MODULE_NAME
 
   subroutine as_sorted_list(this, kv_list, compare)
     class(FHASH_TYPE_NAME), target, intent(in) :: this
-    type(FHASH_TYPE_KV_TYPE_NAME), allocatable, intent(out) :: kv_list(:)
-    interface
-      integer function compare(a, b)
-        import
-        implicit none
-        KEY_TYPE, intent(in) :: a, b
-      end function
-    end interface
+    type(FHASH_TYPE_KV_TYPE_NAME), target, allocatable, intent(out) :: kv_list(:)
+    procedure(compare_keys_i) :: compare
 
     integer, allocatable :: perm(:)
 
     call this%as_list(kv_list)
-    perm = sorting_perm(kv_list, compare_kv)
+
+    call assert(.not. (associated(global_compare_ptr) .or. associated(global_sorted_kv_list_ptr)), &
+        "It looks like I am already sorting, and this is not thread-safe.")
+
+    global_compare_ptr => compare
+    global_sorted_kv_list_ptr => kv_list
+    perm = sorting_perm()
     kv_list = kv_list(perm)
 
-  contains
-    integer function compare_kv(a, b)
-      type(FHASH_TYPE_KV_TYPE_NAME), intent(in) :: a, b
-
-      compare_kv = compare(a%key, b%key)
-    end function
+    global_compare_ptr => null()
+    global_sorted_kv_list_ptr => null()
   end subroutine
 
   impure elemental subroutine deepcopy_fhash(lhs, rhs)
@@ -675,12 +685,27 @@ module FHASH_MODULE_NAME
     endif
   end subroutine
 
-  function sorting_perm(x, compare_x) result(f_perm)
+  integer(c_int) function __COMPARE_AT_IDX(c_a, c_b) bind(C)
+    use, intrinsic :: iso_c_binding, only: c_int, c_ptr, c_f_pointer
+
+    type(c_ptr), value :: c_a, c_b
+
+    integer(c_int), pointer  :: f_a, f_b
+
+    call c_f_pointer(c_a, f_a)
+    call c_f_pointer(c_b, f_b)
+    __COMPARE_AT_IDX = int(global_compare_ptr(global_sorted_kv_list_ptr(f_a)%key, &
+                                              global_sorted_kv_list_ptr(f_b)%key), kind=c_int)
+  end function
+
+  function sorting_perm() result(f_perm)
     use, intrinsic :: iso_c_binding
-    class(*), intent(in) :: x(:)
-    integer, external :: compare_x
+
     integer, allocatable :: f_perm(:)
 
+    integer(c_int) :: i, n
+    integer(c_int), allocatable, target :: perm(:)
+    type(c_funptr) :: fun
     interface
       subroutine c_qsort(array, elem_count, elem_size, compare) bind(C, name="qsort")
         ! The function pointer has the interface
@@ -693,29 +718,21 @@ module FHASH_MODULE_NAME
         type(c_funptr), value :: compare
       end subroutine
     end interface
-    integer(c_int) :: i
-    integer(c_int), allocatable, target :: perm(:)
 
-    perm = [(i, i = 1_c_int, size(x, kind=c_int))]
-    if (size(x) > 0) call c_qsort(c_loc(perm(1)), size(x, kind=c_size_t), c_sizeof(perm(1)), c_funloc(compare_x_at_idx))
+    call assert(associated(global_sorted_kv_list_ptr) .and. associated(global_compare_ptr), &
+        "internal error: global sorting state has not been set yet")
+
+    n = size(global_sorted_kv_list_ptr, kind=c_int)
+    perm = [(i, i = 1_c_int, n)]
+    fun = c_funloc(__COMPARE_AT_IDX)
+    if (n > 0_c_int) call c_qsort(c_loc(perm(1)), int(n, kind=c_size_t), c_sizeof(perm(1)), fun)
     f_perm = int(perm)
-
-  contains
-    integer(c_int) function compare_x_at_idx(c_a, c_b) bind(C)
-      type(c_ptr), value :: c_a, c_b
-
-      integer, pointer  :: f_a, f_b
-
-      call c_f_pointer(c_a, f_a)
-      call c_f_pointer(c_b, f_b)
-
-      compare_x_at_idx = int(compare_x(x(f_a), x(f_b)), kind=c_int)
-    end function
   end function
 end module
 
 #undef _FINAL_IS_IMPLEMENTED
 #undef _FINAL_TYPEORCLASS
+#undef __COMPARE_AT_IDX
 #undef KEY_TYPE
 #undef KEYS_EQUAL_FUNC
 #undef VALUE_TYPE
@@ -724,6 +741,7 @@ end module
 #undef FHASH_TYPE_NAME
 #undef HASH_FUNC
 #undef FHASH_TYPE_ITERATOR_NAME
+#undef FHASH_TYPE_KV_TYPE_NAME
 #undef SHORTNAME
 #undef CONCAT
 #undef PASTE
