@@ -62,7 +62,6 @@
 #endif
   
 module FHASH_MODULE_NAME
-#undef FHASH_MODULE_NAME
 
 #ifdef KEY_USE
   KEY_USE
