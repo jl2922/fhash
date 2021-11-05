@@ -9,13 +9,16 @@
 ! SHORTNAME <Name>                | (optional) The name of the type this FHASH table is
 !                                 | for. If set, it overrides all settings that have
 !                                 | have possibly been made for FHASH_MODULE_NAME,
-!                                 | FHASH_TYPE_NAME and FHASH_TYPE_ITERATOR_NAME.
+!                                 | FHASH_TYPE_NAME, FHASH_TYPE_ITERATOR_NAME, and
+!                                 | FHASH_TYPE_KV_TYPE_NAME.
 !                                 |
 ! FHASH_MODULE_NAME <Name>        | The name of the module that encapsulates the FHASH
 !                                 | types and functionality
 ! FHASH_TYPE_NAME <Name>          | The name of the actual FHASH type
 ! FHASH_TYPE_ITERATOR_NAME <Name> | The name of the FHASH type that can iterate through
 !                                 | the whole FHASH
+!                                 |
+! FHASH_TYPE_KV_TYPE_NAME         | The name of the type that stores a key/value pair
 !                                 |
 ! KEY_USE <use stmt>              | (optional) A use statement that is required to use
 !                                 | a specific type as a key for the FHASH
@@ -38,26 +41,27 @@
 #endif
 
 #ifdef SHORTNAME
-#undef FHASH_MODULE_NAME
-#undef FHASH_TYPE_NAME
-#undef FHASH_TYPE_ITERATOR_NAME
+#   undef FHASH_MODULE_NAME
+#   undef FHASH_TYPE_NAME
+#   undef FHASH_TYPE_ITERATOR_NAME
+#   undef FHASH_TYPE_KV_TYPE_NAME
 
-#ifdef __GFORTRAN__
-#define PASTE(a) a
-#define CONCAT(a,b) PASTE(a)b
-#else
-#define PASTE(a,b) a ## b
-#define CONCAT(a,b) PASTE(a,b)
-#endif
-#define FHASH_MODULE_NAME CONCAT(fhash_module__,SHORTNAME)
-#define FHASH_TYPE_NAME CONCAT(fhash_type__,SHORTNAME)
-#define FHASH_TYPE_ITERATOR_NAME CONCAT(fhash_type_iterator__,SHORTNAME)
+#   ifdef __GFORTRAN__
+#       define PASTE(a) a
+#       define CONCAT(a,b) PASTE(a)b
+#   else
+#       define PASTE(a,b) a ## b
+#       define CONCAT(a,b) PASTE(a,b)
+#   endif
+#   define FHASH_MODULE_NAME CONCAT(fhash_module__,SHORTNAME)
+#   define FHASH_TYPE_NAME CONCAT(fhash_type__,SHORTNAME)
+#   define FHASH_TYPE_ITERATOR_NAME CONCAT(fhash_type_iterator__,SHORTNAME)
 #endif
 
 #ifdef VALUE_POINTER
-#define VALUE_ASSIGNMENT =>
+#   define VALUE_ASSIGNMENT =>
 #else
-#define VALUE_ASSIGNMENT =
+#   define VALUE_ASSIGNMENT =
 #endif
 
 ! Not all compilers implement finalization:
@@ -89,14 +93,15 @@ module FHASH_MODULE_NAME
 
   public :: FHASH_TYPE_NAME
   public :: FHASH_TYPE_ITERATOR_NAME
+  public :: FHASH_TYPE_KV_TYPE_NAME
 
-  type kv_type
+  type :: FHASH_TYPE_KV_TYPE_NAME
     KEY_TYPE :: key
     VALUE_TYPE :: value
   end type
 
-  type node_type
-    type(kv_type), allocatable :: kv
+  type :: node_type
+    type(FHASH_TYPE_KV_TYPE_NAME), allocatable :: kv
     type(node_type), pointer :: next => null()
 
     contains
