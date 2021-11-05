@@ -1,3 +1,8 @@
+#define KEY_TYPE integer
+#define VALUE_TYPE character(10)
+#define SHORTNAME i2char
+#include "fhash.f90"
+
 ! Define the module for the key type.
 module ints_module
 
