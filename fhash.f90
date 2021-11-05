@@ -6,7 +6,7 @@
 !
 ! #define                         | meaning
 ! --------------------------------+-----------------------------------------------------
-! SHORTNAME <Name>                | The name of the type of FHASH table.
+! FHASH_NAME <Name>               | The name of the type of FHASH table.
 !                                 |
 ! KEY_USE <use stmt>              | (optional) A use statement that is required to use
 !                                 | a specific type as a key for the FHASH
@@ -35,14 +35,14 @@
 #    define PASTE(a,b) a ## b
 #    define CONCAT(a,b) PASTE(a,b)
 #endif
-#define FHASH_MODULE_NAME CONCAT(fhash_module__,SHORTNAME)
-#define FHASH_TYPE_NAME CONCAT(fhash_type__,SHORTNAME)
-#define FHASH_TYPE_ITERATOR_NAME CONCAT(fhash_type_iterator__,SHORTNAME)
-#define FHASH_TYPE_KV_TYPE_NAME CONCAT(fhash_type_kv__,SHORTNAME)
+#define FHASH_MODULE_NAME CONCAT(FHASH_NAME,_mod)
+#define FHASH_TYPE_NAME CONCAT(FHASH_NAME,_t)
+#define FHASH_TYPE_ITERATOR_NAME CONCAT(FHASH_NAME,_iter_t)
+#define FHASH_TYPE_KV_TYPE_NAME CONCAT(FHASH_NAME,_kv_t)
 
 ! For some bizar reason both gfortran-10 and ifort-2021.4 fail to compile, unless
 ! this function has a unique name for every time that this file is included:
-#define __COMPARE_AT_IDX CONCAT(fhash_type_compare__,SHORTNAME)
+#define __COMPARE_AT_IDX CONCAT(fhash_type_compare__,FHASH_NAME)
 
 #ifdef VALUE_POINTER
 #   define VALUE_ASSIGNMENT =>
@@ -712,7 +712,7 @@ contains
   end function
 end module
 
-#undef SHORTNAME
+#undef FHASH_NAME
 #undef FHASH_MODULE_NAME
 #undef FHASH_TYPE_NAME
 #undef FHASH_TYPE_ITERATOR_NAME

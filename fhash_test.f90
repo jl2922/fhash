@@ -1,15 +1,15 @@
 module tests_mod
   use ints_module
-  use fhash_module__ints_double
+  use ints_double_mod
   use, intrinsic :: iso_fortran_env
   implicit none
 
 contains
   subroutine test_as_list
-    use fhash_module__i2char
+    use i2char_mod
 
-    type(fhash_type__i2char) :: h
-    type(fhash_type_kv__i2char), allocatable :: kv_list(:)
+    type(i2char_t) :: h
+    type(i2char_kv_t), allocatable :: kv_list(:)
     character(10) :: val
     integer :: i
     logical :: success
@@ -50,7 +50,7 @@ contains
   end function
 
   subroutine test_deep_storage_size()
-    type(fhash_type__ints_double) :: h
+    type(ints_double_t) :: h
     type(ints_type) :: key
     
     integer :: i
@@ -75,7 +75,7 @@ contains
   end subroutine
 
   subroutine test_assignment()
-    type(fhash_type__ints_double) :: a, b, c
+    type(ints_double_t) :: a, b, c
     type(ints_type) :: keys(100)
     real(real64) :: values(size(keys))
 
@@ -111,9 +111,9 @@ contains
     call check_kv(b)
   contains
       subroutine check_kv(fhash)
-        type(fhash_type__ints_double), intent(in) :: fhash
+        type(ints_double_t), intent(in) :: fhash
 
-        type(fhash_type_iterator__ints_double) :: iter
+        type(ints_double_iter_t) :: iter
         type(ints_type) :: key
         real(real64) :: val
         integer :: i
@@ -151,8 +151,8 @@ end module
 program fhash_test
 
   use, intrinsic :: iso_fortran_env
-  use fhash_module__ints_double
-  use fhash_module__int_ints_ptr
+  use ints_double_mod
+  use int_ints_ptr_mod
   use ints_module
   use tests_mod
   implicit none
@@ -171,19 +171,19 @@ program fhash_test
   contains
 
   subroutine test_contructor()
-    type(fhash_type__ints_double) h
+    type(ints_double_t) h
     if (h%key_count() /= 0) stop 'expect no keys'
   end subroutine
 
   subroutine test_reserve()
-    type(fhash_type__ints_double) :: h
+    type(ints_double_t) :: h
 
     call h%reserve(3)
     call assert(h%bucket_count() == 5, 'expected to reserve 5 buckets')
   end subroutine
 
   subroutine test_insert_and_get_ints_double()
-    type(fhash_type__ints_double) :: h
+    type(ints_double_t) :: h
     type(ints_type) :: key
     real(real64) :: value
     real(real64), pointer :: val_ptr
@@ -219,7 +219,7 @@ program fhash_test
   end subroutine
 
   subroutine test_insert_and_get_int_ints_ptr()
-    type(fhash_type__int_ints_ptr) :: h
+    type(int_ints_ptr_t) :: h
     type(ints_type), target :: value
     type(ints_type), pointer :: value_ptr, value_ptr2, value_ptr3
     logical :: success
@@ -237,12 +237,12 @@ program fhash_test
   end subroutine
 
   subroutine test_insert_get_and_remove_int_ints_ptr()
-    type(fhash_type__int_ints_ptr) :: h
+    type(int_ints_ptr_t) :: h
     integer, parameter ::  num_values = 50
     type(ints_type), pointer :: pValues(:), pValue
     logical :: success
     integer ::  i, key, status
-    type(fhash_type_iterator__int_ints_ptr) :: it
+    type(int_ints_ptr_iter_t) :: it
     
     ! prepare
     allocate(pValues(num_values))
@@ -317,8 +317,8 @@ program fhash_test
   end subroutine  
   
   subroutine test_iterate()
-    type(fhash_type__ints_double) :: h
-    type(fhash_type_iterator__ints_double) :: it
+    type(ints_double_t) :: h
+    type(ints_double_iter_t) :: it
     type(ints_type) :: key
     real(real64) :: value
     integer :: i, j

@@ -1,4 +1,4 @@
-#define SHORTNAME i2char
+#define FHASH_NAME i2char
 #define KEY_TYPE integer
 #define VALUE_TYPE character(10)
 #include "fhash.f90"
@@ -61,7 +61,7 @@ contains
 end module ints_module
 
 ! Define the macros needed by fhash and include fhash.f90
-#define SHORTNAME ints_double
+#define FHASH_NAME ints_double
 #define KEY_USE use ints_module
 #define KEY_TYPE type(ints_type)
 #define KEYS_EQUAL_FUNC ints_equal
@@ -72,7 +72,7 @@ end module ints_module
 #include "fhash.f90"
 
 ! Define the macros needed by fhash and include fhash.f90
-#define SHORTNAME int_ints_ptr
+#define FHASH_NAME int_ints_ptr
 #define KEY_TYPE integer
 #define VALUE_USE use ints_module
 #define VALUE_TYPE type(ints_type), pointer

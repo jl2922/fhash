@@ -1,6 +1,6 @@
 #define KEY_ARRAY_SIZE 2
 
-#define SHORTNAME int2real
+#define FHASH_NAME int2real
 #define KEY_TYPE integer, dimension(KEY_ARRAY_SIZE)
 #define VALUE_TYPE real(real64)
 #define VALUE_USE use, intrinsic :: iso_fortran_env, only: real64
@@ -13,11 +13,11 @@ program test_benchmark
   
 contains
   subroutine benchmark(n_ints, n_keys)
-    use fhash_module__int2real
+    use int2real_mod
 
     integer, intent(in) :: n_ints, n_keys
 
-    type(fhash_type__int2real) :: h
+    type(int2real_t) :: h
     integer :: key(n_ints)
     integer :: i, j
     real :: t0, t1, t2
