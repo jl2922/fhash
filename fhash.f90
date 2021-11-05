@@ -173,6 +173,7 @@ module FHASH_MODULE_NAME
 
       ! Get the key/value pairs as a list:
       procedure, non_overridable, public :: as_list
+      procedure, non_overridable, public :: as_sorted_list
 
       ! Return the accumalated storage size of an fhash, including the underlying pointers.
       ! Takes the bit size of a key-value pair as an argument.
@@ -464,6 +465,31 @@ module FHASH_MODULE_NAME
     enddo
   end subroutine
 
+  subroutine as_sorted_list(this, kv_list, compare)
+    class(FHASH_TYPE_NAME), target, intent(in) :: this
+    type(FHASH_TYPE_KV_TYPE_NAME), allocatable, intent(out) :: kv_list(:)
+    interface
+      integer function compare(a, b)
+        import
+        implicit none
+        KEY_TYPE, intent(in) :: a, b
+      end function
+    end interface
+
+    integer, allocatable :: perm(:)
+
+    call this%as_list(kv_list)
+    perm = sorting_perm(kv_list, compare_kv)
+    kv_list = kv_list(perm)
+
+  contains
+    integer function compare_kv(a, b)
+      type(FHASH_TYPE_KV_TYPE_NAME), intent(in) :: a, b
+
+      compare_kv = compare(a%key, b%key)
+    end function
+  end subroutine
+
   impure elemental subroutine deepcopy_fhash(lhs, rhs)
     class(FHASH_TYPE_NAME), intent(out) :: lhs
     type(FHASH_TYPE_NAME), intent(in) :: rhs
@@ -648,6 +674,44 @@ module FHASH_MODULE_NAME
       error stop
     endif
   end subroutine
+
+  function sorting_perm(x, compare_x) result(f_perm)
+    use, intrinsic :: iso_c_binding
+    class(*), intent(in) :: x(:)
+    integer, external :: compare_x
+    integer, allocatable :: f_perm(:)
+
+    interface
+      subroutine c_qsort(array, elem_count, elem_size, compare) bind(C, name="qsort")
+        ! The function pointer has the interface
+        !     int(*compar)(const void *, const void *)
+        use, intrinsic :: iso_c_binding
+        implicit none
+        type(c_ptr), value :: array
+        integer(c_size_t), value :: elem_count
+        integer(c_size_t), value :: elem_size
+        type(c_funptr), value :: compare
+      end subroutine
+    end interface
+    integer(c_int) :: i
+    integer(c_int), allocatable, target :: perm(:)
+
+    perm = [(i, i = 1_c_int, size(x, kind=c_int))]
+    if (size(x) > 0) call c_qsort(c_loc(perm(1)), size(x, kind=c_size_t), c_sizeof(perm(1)), c_funloc(compare_x_at_idx))
+    f_perm = int(perm)
+
+  contains
+    integer(c_int) function compare_x_at_idx(c_a, c_b) bind(C)
+      type(c_ptr), value :: c_a, c_b
+
+      integer, pointer  :: f_a, f_b
+
+      call c_f_pointer(c_a, f_a)
+      call c_f_pointer(c_b, f_b)
+
+      compare_x_at_idx = int(compare_x(x(f_a), x(f_b)), kind=c_int)
+    end function
+  end function
 end module
 
 #undef _FINAL_IS_IMPLEMENTED

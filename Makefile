@@ -10,6 +10,7 @@ FFLAGS_BASIC += -Wunused-parameter
 FFLAGS_BASIC += -Wno-maybe-uninitialized -Wno-unused-dummy-argument -Wno-error=return-type
 FFLAGS_BASIC += -Wno-unused-function
 FFLAGS_BASIC += -Wno-conversion
+FFLAGS_BASIC += -Wno-implicit-interface -Wno-strict-overflow # implicit interface is necessary for calling qsort with general types. Conversions from/to C ints are harmless.
 
 FFLAGS_DEVEL = -O0 -fcheck=all -fbounds-check -Warray-bounds -Wstrict-overflow=5 -Wunderflow -ffpe-trap=invalid,zero,overflow
 # FFLAGS_DEVEL += -ftrapv
@@ -19,7 +20,7 @@ FFLAGS_RELEASE = -O3
 # FFLAGS_BASIC += -Wdo-subscript  -std=f2018  -Wfrontend-loop-interchange
 # FFLAGS_DEVEL += -fsanitize-address-use-after-scope
 
-FFLAGS = $(FFLAGS_BASIC) $(FFLAGS_DEVEL)
+FFLAGS = $(FFLAGS_DEVEL) $(FFLAGS_BASIC)
 
 .PHONY: all test clean ref
 

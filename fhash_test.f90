@@ -15,10 +15,13 @@ contains
     logical :: success
 
     call h%reserve(3)
+    call h%set(1, "one (typo)")
     call h%set(1, "one       ")
     call h%set(0, "zero      ")
     call h%set(4, "four      ")
     call h%set(7, "seven     ")
+
+    call assert(h%get_ptr(1) == "one", 'expected  h%get_ptr(1) == "one"')
     
     call h%as_list(kv_list)
     call assert(allocated(kv_list), "kv_list not allocated")
@@ -28,6 +31,23 @@ contains
       call assert(success, "key in list was not in hash")
       call assert(val == kv_list(i)%value, "bad value in list")
     enddo
+
+    call h%as_sorted_list(kv_list, compare_ints)
+    call assert(allocated(kv_list), "sorted kv_list not allocated")
+    call assert(size(kv_list) == 4, "sorted kv_list has bad size")
+    do i = 1, size(kv_list)
+      call h%get(kv_list(i)%key, val, success)
+      call assert(success, "key in sorted list was not in hash")
+      call assert(val == kv_list(i)%value, "bad value in sorted list")
+    enddo
+    call assert(kv_list(2:)%key - kv_list(:size(kv_list)-1)%key > 0, "sorted list should be strictly increasing")
+
+  contains
+    integer function compare_ints(a, b)
+      integer, intent(in) :: a, b
+
+      compare_ints = a - b
+    end function
   end subroutine
 
   subroutine test_deep_storage_size()
