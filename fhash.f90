@@ -6,19 +6,7 @@
 !
 ! #define                         | meaning
 ! --------------------------------+-----------------------------------------------------
-! SHORTNAME <Name>                | (optional) The name of the type this FHASH table is
-!                                 | for. If set, it overrides all settings that have
-!                                 | have possibly been made for FHASH_MODULE_NAME,
-!                                 | FHASH_TYPE_NAME, FHASH_TYPE_ITERATOR_NAME, and
-!                                 | FHASH_TYPE_KV_TYPE_NAME.
-!                                 |
-! FHASH_MODULE_NAME <Name>        | The name of the module that encapsulates the FHASH
-!                                 | types and functionality
-! FHASH_TYPE_NAME <Name>          | The name of the actual FHASH type
-! FHASH_TYPE_ITERATOR_NAME <Name> | The name of the FHASH type that can iterate through
-!                                 | the whole FHASH
-!                                 |
-! FHASH_TYPE_KV_TYPE_NAME         | The name of the type that stores a key/value pair
+! SHORTNAME <Name>                | The name of the type of FHASH table.
 !                                 |
 ! KEY_USE <use stmt>              | (optional) A use statement that is required to use
 !                                 | a specific type as a key for the FHASH
@@ -40,24 +28,17 @@
 !                                 | anywhere, it is configured based on VALUE_POINTER
 #endif
 
-#ifdef SHORTNAME
-#   undef FHASH_MODULE_NAME
-#   undef FHASH_TYPE_NAME
-#   undef FHASH_TYPE_ITERATOR_NAME
-#   undef FHASH_TYPE_KV_TYPE_NAME
-
-#   ifdef __GFORTRAN__
-#       define PASTE(a) a
-#       define CONCAT(a,b) PASTE(a)b
-#   else
-#       define PASTE(a,b) a ## b
-#       define CONCAT(a,b) PASTE(a,b)
-#   endif
-#   define FHASH_MODULE_NAME CONCAT(fhash_module__,SHORTNAME)
-#   define FHASH_TYPE_NAME CONCAT(fhash_type__,SHORTNAME)
-#   define FHASH_TYPE_ITERATOR_NAME CONCAT(fhash_type_iterator__,SHORTNAME)
-#   define FHASH_TYPE_KV_TYPE_NAME CONCAT(fhash_type_kv__,SHORTNAME)
+#ifdef __GFORTRAN__
+#    define PASTE(a) a
+#    define CONCAT(a,b) PASTE(a)b
+#else
+#    define PASTE(a,b) a ## b
+#    define CONCAT(a,b) PASTE(a,b)
 #endif
+#define FHASH_MODULE_NAME CONCAT(fhash_module__,SHORTNAME)
+#define FHASH_TYPE_NAME CONCAT(fhash_type__,SHORTNAME)
+#define FHASH_TYPE_ITERATOR_NAME CONCAT(fhash_type_iterator__,SHORTNAME)
+#define FHASH_TYPE_KV_TYPE_NAME CONCAT(fhash_type_kv__,SHORTNAME)
 
 ! For some bizar reason both gfortran-10 and ifort-2021.4 fail to compile, unless
 ! this function has a unique name for every time that this file is included:
@@ -493,6 +474,7 @@ contains
 
     global_compare_ptr => compare
     global_sorted_kv_list_ptr => kv_list
+    allocate(perm(size(kv_list)))
     perm = sorting_perm()
     kv_list = kv_list(perm)
 
@@ -730,6 +712,12 @@ contains
   end function
 end module
 
+#undef SHORTNAME
+#undef FHASH_MODULE_NAME
+#undef FHASH_TYPE_NAME
+#undef FHASH_TYPE_ITERATOR_NAME
+#undef FHASH_TYPE_KV_TYPE_NAME
+#undef HASH_FUNC
 #undef _FINAL_IS_IMPLEMENTED
 #undef _FINAL_TYPEORCLASS
 #undef __COMPARE_AT_IDX
@@ -738,10 +726,5 @@ end module
 #undef VALUE_TYPE
 #undef VALUE_TYPE_INIT
 #undef VALUE_ASSIGNMENT
-#undef FHASH_TYPE_NAME
-#undef HASH_FUNC
-#undef FHASH_TYPE_ITERATOR_NAME
-#undef FHASH_TYPE_KV_TYPE_NAME
-#undef SHORTNAME
 #undef CONCAT
 #undef PASTE

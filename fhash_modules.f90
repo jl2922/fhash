@@ -1,6 +1,6 @@
+#define SHORTNAME i2char
 #define KEY_TYPE integer
 #define VALUE_TYPE character(10)
-#define SHORTNAME i2char
 #include "fhash.f90"
 
 ! Define the module for the key type.
@@ -61,6 +61,7 @@ contains
 end module ints_module
 
 ! Define the macros needed by fhash and include fhash.f90
+#define SHORTNAME ints_double
 #define KEY_USE use ints_module
 #define KEY_TYPE type(ints_type)
 #define KEYS_EQUAL_FUNC ints_equal
@@ -68,15 +69,14 @@ end module ints_module
 #define VALUE_TYPE real(real64)
 #define HASH_FUNC hash_value
 #define VALUE_TYPE_INIT 0.0
-#define SHORTNAME ints_double
 #include "fhash.f90"
 
 ! Define the macros needed by fhash and include fhash.f90
+#define SHORTNAME int_ints_ptr
 #define KEY_TYPE integer
 #define VALUE_USE use ints_module
 #define VALUE_TYPE type(ints_type), pointer
 !#define VALUE_TYPE_INIT null()
-#define SHORTNAME int_ints_ptr
 #define VALUE_POINTER
 #ifdef VALUE_TYPE_INIT
 #define CHECK_ITERATOR_VALUE
