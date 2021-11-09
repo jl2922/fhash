@@ -90,11 +90,6 @@ module FHASH_MODULE_NAME
     type(node_type), pointer :: next => null()
 
     contains
-      ! If kv is not allocated, allocate and set to the key, value passed in.
-      ! If key is present and the same as the key passed in, overwrite the value.
-      ! Otherwise, defer to the next node (allocate if not allocated)
-      procedure, non_overridable :: node_set
-
       ! If kv is not allocated, fail and return
       ! If key is present and node is first in bucket, set first node in bucket to
       !   the next node of first. Return success
@@ -293,28 +288,31 @@ contains
     call assert(associated(this%buckets), "set: fhash has not been initialized")
 
     bucket_id = this%key2bucket(key)
-    call this%buckets(bucket_id)%node_set(key, value, is_new)
+    call node_set(this%buckets(bucket_id), key, value, is_new)
 
     if (is_new) this%n_keys = this%n_keys + 1
   end subroutine
 
   recursive subroutine node_set(this, key, value, is_new)
-    class(node_type), intent(inout) :: this
+    ! If kv is not allocated, allocate and set to the key, value passed in.
+    ! If key is present and the same as the key passed in, overwrite the value.
+    ! Otherwise, defer to the next node (allocate if not allocated)
+    type(node_type), intent(inout) :: this
     KEY_TYPE, intent(in) :: key
     VALUE_TYPE, intent(in) :: value
-    logical, optional, intent(out) :: is_new
+    logical, intent(out) :: is_new
 
     if (.not. allocated(this%kv)) then
       allocate(this%kv)
       this%kv%key = key
       this%kv%value VALUE_ASSIGNMENT value
-      if (present(is_new)) is_new = .true.
+      is_new = .true.
     else if (keys_equal(this%kv%key, key)) then
       this%kv%value VALUE_ASSIGNMENT value
-      if (present(is_new)) is_new = .false.
+      is_new = .false.
     else
       if (.not. associated(this%next)) allocate(this%next)
-      call this%next%node_set(key, value, is_new)
+      call node_set(this%next, key, value, is_new)
     endif
   end subroutine
 
