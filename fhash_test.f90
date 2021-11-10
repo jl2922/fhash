@@ -43,6 +43,44 @@ contains
     call assert(kv_list(2:)%key - kv_list(:size(kv_list)-1)%key > 0, "sorted list should be strictly increasing")
   end subroutine
 
+  subroutine test_get_ptr()
+    use i2char_mod
+
+    type(i2char_t) :: h
+    character(:), pointer :: c
+    type(i2char_kv_t), allocatable :: kv_list(:)
+    integer :: i
+
+    call h%reserve(1)
+    
+    call h%set(7, "seven     ")
+
+    c => h%get_ptr(0)
+    call assert(.not. associated(c), "expected .not. associated(c)")
+    c => h%get_ptr(1)
+    call assert(.not. associated(c), "expected .not. associated(c)")
+    c => h%get_ptr(7)
+    call assert(associated(c), "expected associated(c)")
+    call assert(c == "seven", "exptected c == 'seven'")
+    
+    c(:) = 'new seven'
+    c => h%get_ptr(7)
+    call assert(associated(c), "expected associated(c)")
+    call assert(c == 'new seven', "expected c == 'new seven'")
+
+    do i = 1, 3
+      c => h%get_ptr(2, autoval='auto two  ')
+      call assert(associated(c), "expected associated(c)")
+      call assert(c == 'auto two', "expected c == 'auto two'")
+      call assert(h%key_count() == 2, 'expected two keys in h')
+    enddo
+
+    call h%as_sorted_list(kv_list, compare_ints)
+    call assert(size(kv_list) == 2, "expected size(kv_list) == 2")
+    call assert(kv_list%key == [2, 7], "keys should be [2, 7]")
+    call assert(kv_list%value == ['auto two ', 'new seven'], "test_get_ptr: bad values")
+  end subroutine
+
   integer function compare_ints(a, b)
     integer, intent(in) :: a, b
 
@@ -157,6 +195,7 @@ program fhash_test
   use tests_mod
   implicit none
 
+  call test_get_ptr()
   call test_contructor()
   call test_reserve()
   call test_insert_and_get_ints_double()
