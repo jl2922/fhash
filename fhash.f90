@@ -273,7 +273,7 @@ contains
     enddo
   end subroutine
 
-  function key_count(this)
+  impure elemental function key_count(this)
     class(FHASH_TYPE_NAME), intent(in) :: this
     integer :: key_count
 
