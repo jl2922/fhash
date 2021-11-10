@@ -4,6 +4,8 @@ Fast hash map implementation in fortran
 ## Description
 Implemention of the GCC hashmap structure in Fortran. It supports any types of keys and values, as long as you set the following macros:
 
+* `FHASH_NAME`;
+
 * `KEY_TYPE` and `VALUE_TYPE` with corresponding use statements `KEY_USE` and `VALUE_USE`,
 
 and, optionally,

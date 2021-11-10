@@ -6,16 +6,7 @@
 !
 ! #define                         | meaning
 ! --------------------------------+-----------------------------------------------------
-! SHORTNAME <Name>                | (optional) The name of the type this FHASH table is
-!                                 | for. If set, it overrides all settings that have
-!                                 | have possibly been made for FHASH_MODULE_NAME,
-!                                 | FHASH_TYPE_NAME and FHASH_TYPE_ITERATOR_NAME.
-!                                 |
-! FHASH_MODULE_NAME <Name>        | The name of the module that encapsulates the FHASH
-!                                 | types and functionality
-! FHASH_TYPE_NAME <Name>          | The name of the actual FHASH type
-! FHASH_TYPE_ITERATOR_NAME <Name> | The name of the FHASH type that can iterate through
-!                                 | the whole FHASH
+! FHASH_NAME <Name>               | The name of the type of FHASH table.
 !                                 |
 ! KEY_USE <use stmt>              | (optional) A use statement that is required to use
 !                                 | a specific type as a key for the FHASH
@@ -37,27 +28,26 @@
 !                                 | anywhere, it is configured based on VALUE_POINTER
 #endif
 
-#ifdef SHORTNAME
-#undef FHASH_MODULE_NAME
-#undef FHASH_TYPE_NAME
-#undef FHASH_TYPE_ITERATOR_NAME
-
 #ifdef __GFORTRAN__
-#define PASTE(a) a
-#define CONCAT(a,b) PASTE(a)b
+#    define PASTE(a) a
+#    define CONCAT(a,b) PASTE(a)b
 #else
-#define PASTE(a,b) a ## b
-#define CONCAT(a,b) PASTE(a,b)
+#    define PASTE(a,b) a ## b
+#    define CONCAT(a,b) PASTE(a,b)
 #endif
-#define FHASH_MODULE_NAME CONCAT(fhash_module__,SHORTNAME)
-#define FHASH_TYPE_NAME CONCAT(fhash_type__,SHORTNAME)
-#define FHASH_TYPE_ITERATOR_NAME CONCAT(fhash_type_iterator__,SHORTNAME)
-#endif
+#define FHASH_MODULE_NAME CONCAT(FHASH_NAME,_mod)
+#define FHASH_TYPE_NAME CONCAT(FHASH_NAME,_t)
+#define FHASH_TYPE_ITERATOR_NAME CONCAT(FHASH_NAME,_iter_t)
+#define FHASH_TYPE_KV_TYPE_NAME CONCAT(FHASH_NAME,_kv_t)
+
+! For some bizar reason both gfortran-10 and ifort-2021.4 fail to compile, unless
+! this function has a unique name for every time that this file is included:
+#define __COMPARE_AT_IDX CONCAT(fhash_type_compare__,FHASH_NAME)
 
 #ifdef VALUE_POINTER
-#define VALUE_ASSIGNMENT =>
+#   define VALUE_ASSIGNMENT =>
 #else
-#define VALUE_ASSIGNMENT =
+#   define VALUE_ASSIGNMENT =
 #endif
 
 ! Not all compilers implement finalization:
@@ -72,7 +62,6 @@
 #endif
   
 module FHASH_MODULE_NAME
-#undef FHASH_MODULE_NAME
 
 #ifdef KEY_USE
   KEY_USE
@@ -89,14 +78,15 @@ module FHASH_MODULE_NAME
 
   public :: FHASH_TYPE_NAME
   public :: FHASH_TYPE_ITERATOR_NAME
+  public :: FHASH_TYPE_KV_TYPE_NAME
 
-  type kv_type
+  type :: FHASH_TYPE_KV_TYPE_NAME
     KEY_TYPE :: key
     VALUE_TYPE :: value
   end type
 
-  type node_type
-    type(kv_type), allocatable :: kv
+  type :: node_type
+    type(FHASH_TYPE_KV_TYPE_NAME), allocatable :: kv
     type(node_type), pointer :: next => null()
 
     contains
@@ -165,6 +155,10 @@ module FHASH_MODULE_NAME
       ! Remove the value with the given key.
       procedure, non_overridable, public :: remove
 
+      ! Get the key/value pairs as a list:
+      procedure, non_overridable, public :: as_list
+      procedure, non_overridable, public :: as_sorted_list
+
       ! Return the accumalated storage size of an fhash, including the underlying pointers.
       ! Takes the bit size of a key-value pair as an argument.
       procedure, non_overridable, public :: deep_storage_size => fhash_deep_storage_size
@@ -204,7 +198,17 @@ module FHASH_MODULE_NAME
     module procedure :: scalar_all
   end interface
 
-  contains
+  interface
+    integer function compare_keys_i(a, b)
+      import
+      implicit none
+      KEY_TYPE, intent(in) :: a, b
+    end function
+  end interface
+  procedure(compare_keys_i), pointer :: global_compare_ptr => null()
+  type(FHASH_TYPE_KV_TYPE_NAME), pointer :: global_sorted_kv_list_ptr(:) => null()
+
+contains
   logical function keys_equal(a, b)
     KEY_TYPE, intent(in) :: a, b
 
@@ -438,6 +442,45 @@ module FHASH_MODULE_NAME
     endif
   end subroutine
 
+  subroutine as_list(this, kv_list)
+    class(FHASH_TYPE_NAME), target, intent(in) :: this
+    type(FHASH_TYPE_KV_TYPE_NAME), allocatable, intent(out) :: kv_list(:)
+
+    integer :: i, n
+    type(FHASH_TYPE_ITERATOR_NAME) :: iter
+    integer :: iter_stat
+
+    n = this%key_count()
+    allocate(kv_list(n))
+    call iter%begin(this)
+    do i = 1, n
+      call iter%next(kv_list(i)%key, kv_list(i)%value, iter_stat)
+      call assert(iter_stat == 0, "as_list: internal error: iterator stopped unexpectedly")
+    enddo
+  end subroutine
+
+  subroutine as_sorted_list(this, kv_list, compare)
+    class(FHASH_TYPE_NAME), target, intent(in) :: this
+    type(FHASH_TYPE_KV_TYPE_NAME), target, allocatable, intent(out) :: kv_list(:)
+    procedure(compare_keys_i) :: compare
+
+    integer, allocatable :: perm(:)
+
+    call this%as_list(kv_list)
+
+    call assert(.not. (associated(global_compare_ptr) .or. associated(global_sorted_kv_list_ptr)), &
+        "It looks like I am already sorting, and this is not thread-safe.")
+
+    global_compare_ptr => compare
+    global_sorted_kv_list_ptr => kv_list
+    allocate(perm(size(kv_list)))
+    perm = sorting_perm()
+    kv_list = kv_list(perm)
+
+    global_compare_ptr => null()
+    global_sorted_kv_list_ptr => null()
+  end subroutine
+
   impure elemental subroutine deepcopy_fhash(lhs, rhs)
     class(FHASH_TYPE_NAME), intent(out) :: lhs
     type(FHASH_TYPE_NAME), intent(in) :: rhs
@@ -622,18 +665,65 @@ module FHASH_MODULE_NAME
       error stop
     endif
   end subroutine
+
+  integer(c_int) function __COMPARE_AT_IDX(c_a, c_b) bind(C)
+    use, intrinsic :: iso_c_binding, only: c_int, c_ptr, c_f_pointer
+
+    type(c_ptr), value :: c_a, c_b
+
+    integer(c_int), pointer  :: f_a, f_b
+
+    call c_f_pointer(c_a, f_a)
+    call c_f_pointer(c_b, f_b)
+    __COMPARE_AT_IDX = int(global_compare_ptr(global_sorted_kv_list_ptr(f_a)%key, &
+                                              global_sorted_kv_list_ptr(f_b)%key), kind=c_int)
+  end function
+
+  function sorting_perm() result(f_perm)
+    use, intrinsic :: iso_c_binding
+
+    integer, allocatable :: f_perm(:)
+
+    integer(c_int) :: i, n
+    integer(c_int), allocatable, target :: perm(:)
+    type(c_funptr) :: fun
+    interface
+      subroutine c_qsort(array, elem_count, elem_size, compare) bind(C, name="qsort")
+        ! The function pointer has the interface
+        !     int(*compar)(const void *, const void *)
+        use, intrinsic :: iso_c_binding
+        implicit none
+        type(c_ptr), value :: array
+        integer(c_size_t), value :: elem_count
+        integer(c_size_t), value :: elem_size
+        type(c_funptr), value :: compare
+      end subroutine
+    end interface
+
+    call assert(associated(global_sorted_kv_list_ptr) .and. associated(global_compare_ptr), &
+        "internal error: global sorting state has not been set yet")
+
+    n = size(global_sorted_kv_list_ptr, kind=c_int)
+    perm = [(i, i = 1_c_int, n)]
+    fun = c_funloc(__COMPARE_AT_IDX)
+    if (n > 0_c_int) call c_qsort(c_loc(perm(1)), int(n, kind=c_size_t), c_sizeof(perm(1)), fun)
+    f_perm = int(perm)
+  end function
 end module
 
+#undef FHASH_NAME
+#undef FHASH_MODULE_NAME
+#undef FHASH_TYPE_NAME
+#undef FHASH_TYPE_ITERATOR_NAME
+#undef FHASH_TYPE_KV_TYPE_NAME
+#undef HASH_FUNC
 #undef _FINAL_IS_IMPLEMENTED
 #undef _FINAL_TYPEORCLASS
+#undef __COMPARE_AT_IDX
 #undef KEY_TYPE
 #undef KEYS_EQUAL_FUNC
 #undef VALUE_TYPE
 #undef VALUE_TYPE_INIT
 #undef VALUE_ASSIGNMENT
-#undef FHASH_TYPE_NAME
-#undef HASH_FUNC
-#undef FHASH_TYPE_ITERATOR_NAME
-#undef SHORTNAME
 #undef CONCAT
 #undef PASTE

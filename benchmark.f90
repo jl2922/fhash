@@ -1,13 +1,9 @@
 #define KEY_ARRAY_SIZE 2
 
-#define FHASH_MODULE_NAME int_intsptr_fhash_mod
-#define FHASH_TYPE_NAME int_intsptr_fhash_type
-#define FHASH_TYPE_ITERATOR_NAME int_intsptr_fhash_iter_type
+#define FHASH_NAME int2real
 #define KEY_TYPE integer, dimension(KEY_ARRAY_SIZE)
 #define VALUE_TYPE real(real64)
 #define VALUE_USE use, intrinsic :: iso_fortran_env, only: real64
-! #define VALUE_TYPE_INIT null()
-! #define VALUE_POINTER
 #include "fhash.f90"
 
 program test_benchmark
@@ -17,11 +13,11 @@ program test_benchmark
   
 contains
   subroutine benchmark(n_ints, n_keys)
-    use int_intsptr_fhash_mod
+    use int2real_mod
 
     integer, intent(in) :: n_ints, n_keys
 
-    type(int_intsptr_fhash_type) :: h
+    type(int2real_t) :: h
     integer :: key(n_ints)
     integer :: i, j
     real :: t0, t1, t2
