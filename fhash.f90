@@ -39,6 +39,7 @@
 #define FHASH_TYPE_NAME CONCAT(FHASH_NAME,_t)
 #define FHASH_TYPE_ITERATOR_NAME CONCAT(FHASH_NAME,_iter_t)
 #define FHASH_TYPE_KV_TYPE_NAME CONCAT(FHASH_NAME,_kv_t)
+#define FHASH_SORT_KV_NAME CONCAT(sort_,FHASH_NAME)
 
 ! For some bizar reason both gfortran-10 and ifort-2021.4 fail to compile, unless
 ! this function has a unique name for every time that this file is included:
@@ -79,6 +80,8 @@ module FHASH_MODULE_NAME
   public :: FHASH_TYPE_NAME
   public :: FHASH_TYPE_ITERATOR_NAME
   public :: FHASH_TYPE_KV_TYPE_NAME
+  public :: FHASH_SORT_KV_NAME ! for convenience, because it's hard for the users to write a generic sort
+                         ! (that circumvents the compiler bugs when passing pointers to internal functions to `qsort`)
 
   type :: FHASH_TYPE_KV_TYPE_NAME
     KEY_TYPE :: key
@@ -512,19 +515,21 @@ contains
     type(FHASH_TYPE_KV_TYPE_NAME), target, allocatable, intent(out) :: kv_list(:)
     procedure(compare_keys_i) :: compare
 
-    integer, allocatable :: perm(:)
-
     call this%as_list(kv_list)
+    call FHASH_SORT_KV_NAME(kv_list, compare)
+  end subroutine
+
+  subroutine FHASH_SORT_KV_NAME(kv_list, compare)
+    type(FHASH_TYPE_KV_TYPE_NAME), target, intent(inout) :: kv_list(:)
+    procedure(compare_keys_i) :: compare
 
     call assert(.not. (associated(global_compare_ptr) .or. associated(global_sorted_kv_list_ptr)), &
         "It looks like I am already sorting, and this is not thread-safe.")
-
     global_compare_ptr => compare
     global_sorted_kv_list_ptr => kv_list
-    allocate(perm(size(kv_list)))
-    perm = sorting_perm()
-    kv_list = kv_list(perm)
 
+    kv_list = kv_list(sorting_perm())
+    
     global_compare_ptr => null()
     global_sorted_kv_list_ptr => null()
   end subroutine
