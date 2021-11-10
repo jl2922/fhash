@@ -90,11 +90,6 @@ module FHASH_MODULE_NAME
     type(node_type), pointer :: next => null()
 
     contains
-      ! If kv is not allocated, allocate and set to the key, value passed in.
-      ! If key is present and the same as the key passed in, overwrite the value.
-      ! Otherwise, defer to the next node (allocate if not allocated)
-      procedure, non_overridable :: node_set
-
       ! If kv is not allocated, fail and return
       ! If key is present and node is first in bucket, set first node in bucket to
       !   the next node of first. Return success
@@ -149,7 +144,9 @@ module FHASH_MODULE_NAME
       procedure, non_overridable, public :: get
 
 #ifndef VALUE_POINTER
-      procedure, non_overridable, public :: get_ptr
+      generic :: get_ptr => get_ptr_or_autoval, get_ptr_or_null
+      procedure, non_overridable, public :: get_ptr_or_null
+      procedure, non_overridable, public :: get_ptr_or_autoval
 #endif
 
       ! Remove the value with the given key.
@@ -293,28 +290,31 @@ contains
     call assert(associated(this%buckets), "set: fhash has not been initialized")
 
     bucket_id = this%key2bucket(key)
-    call this%buckets(bucket_id)%node_set(key, value, is_new)
+    call node_set(this%buckets(bucket_id), key, value, is_new)
 
     if (is_new) this%n_keys = this%n_keys + 1
   end subroutine
 
   recursive subroutine node_set(this, key, value, is_new)
-    class(node_type), intent(inout) :: this
+    ! If kv is not allocated, allocate and set to the key, value passed in.
+    ! If key is present and the same as the key passed in, overwrite the value.
+    ! Otherwise, defer to the next node (allocate if not allocated)
+    type(node_type), intent(inout) :: this
     KEY_TYPE, intent(in) :: key
     VALUE_TYPE, intent(in) :: value
-    logical, optional, intent(out) :: is_new
+    logical, intent(out) :: is_new
 
     if (.not. allocated(this%kv)) then
       allocate(this%kv)
       this%kv%key = key
       this%kv%value VALUE_ASSIGNMENT value
-      if (present(is_new)) is_new = .true.
+      is_new = .true.
     else if (keys_equal(this%kv%key, key)) then
       this%kv%value VALUE_ASSIGNMENT value
-      if (present(is_new)) is_new = .false.
+      is_new = .false.
     else
       if (.not. associated(this%next)) allocate(this%next)
-      call this%next%node_set(key, value, is_new)
+      call node_set(this%next, key, value, is_new)
     endif
   end subroutine
 
@@ -356,7 +356,7 @@ contains
   end subroutine
   
 #ifndef VALUE_POINTER
-  function get_ptr(this, key) result(value)
+  function get_ptr_or_null(this, key) result(value)
     class(FHASH_TYPE_NAME), intent(in) :: this
     KEY_TYPE, intent(in) :: key
     VALUE_TYPE, pointer :: value
@@ -370,10 +370,10 @@ contains
     call assert(1 <= bucket_id .and. bucket_id <= size(this%buckets), "get: fhash has not been initialized")
     bucket => this%buckets(bucket_id)
 
-    value => node_get_ptr(bucket, key)
+    value => node_get_ptr_or_null(bucket, key)
   end function
 
-  recursive function node_get_ptr(this, key) result(value)
+  recursive function node_get_ptr_or_null(this, key) result(value)
     type(node_type), target, intent(in) :: this
     KEY_TYPE, intent(in) :: key
     VALUE_TYPE, pointer :: value
@@ -385,9 +385,57 @@ contains
     else if (.not. associated(this%next)) then
       value => null()
     else
-      value => node_get_ptr(this%next, key)
+      value => node_get_ptr_or_null(this%next, key)
     endif
   end function
+
+  function get_ptr_or_autoval(this, key, autoval) result(value)
+    class(FHASH_TYPE_NAME), intent(inout) :: this
+    KEY_TYPE, intent(in) :: key
+    VALUE_TYPE, intent(in) :: autoval
+    VALUE_TYPE, pointer :: value
+
+    integer :: bucket_id
+    type(node_type), pointer :: bucket
+    logical :: is_new
+
+    call assert(associated(this%buckets), "get: fhash has not been initialized")
+    
+    bucket_id = this%key2bucket(key)
+    call assert(1 <= bucket_id .and. bucket_id <= size(this%buckets), "get: fhash has not been initialized")
+    bucket => this%buckets(bucket_id)
+
+    call node_get_ptr_or_autoval(bucket, key, value, is_new, autoval)
+    if (is_new) this%n_keys = this%n_keys + 1
+  end function
+
+  recursive subroutine node_get_ptr_or_autoval(this, key, value, is_new, autoval)
+    type(node_type), target, intent(inout) :: this
+    KEY_TYPE, intent(in) :: key
+    VALUE_TYPE, pointer, intent(out) :: value
+    logical, intent(out) :: is_new
+    VALUE_TYPE, intent(in) :: autoval
+
+    if (.not. allocated(this%kv)) then
+      allocate(this%kv)
+      this%kv%key = key
+      this%kv%value = autoval
+      value => this%kv%value
+      is_new = .true.
+    else if (keys_equal(this%kv%key, key)) then
+      value => this%kv%value
+      is_new = .false.
+    else if (.not. associated(this%next)) then
+      allocate(this%next)
+      allocate(this%next%kv)
+      this%next%kv%key = key
+      this%next%kv%value = autoval
+      value => this%next%kv%value
+      is_new = .true.
+    else
+      call node_get_ptr_or_autoval(this%next, key, value, is_new, autoval)
+    endif
+  end subroutine
 #endif
 
   subroutine remove(this, key, success)
