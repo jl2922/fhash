@@ -607,14 +607,12 @@ contains
 
     type(node_type), pointer :: prev, next
 
-    if (.not. associated(node%next)) return
-
-    prev => node%next
+    next => node%next
     do
+      if (.not. associated(next)) return
+      prev => next
       next => prev%next
       deallocate(prev)
-      if (.not. associated(next)) exit
-      prev => next
     enddo
   end subroutine
 
