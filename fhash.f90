@@ -104,22 +104,12 @@ module FHASH_MODULE_NAME
       
       ! Return the length of the linked list start from the current node.
       procedure, non_overridable :: node_depth
-      
-      ! Deallocate kv if allocated.
-      ! Call the clear method of the next node if the next pointer associated.
-      ! Deallocate and nullify the next pointer.
-      !
-      ! Need separate finalizers because a resursive procedure cannot be elemental.
-#ifdef _FINAL_IS_IMPLEMENTED
-      final :: clear_scalar_node
-      final :: clear_rank1_nodes
-#else
-      ! Old `gfortran` versions think the passed dummy must be a scalar:
-      generic, public :: clear => clear_scalar_node
-      procedure, non_overridable, private :: clear_scalar_node
-      ! procedure, non_overridable, private :: clear_rank1_nodes
-#endif
-    end type
+
+      ! No FINAL procedure here, because it would have to be recursive (at least
+      ! implicitly, because it finalizes the 'next' pointer), and a recursive
+      ! procedure is not performant.
+      ! Fortunately this type is not public, and it gets deallocated when finalizing the fhash.
+  end type
 
   type FHASH_TYPE_NAME
     private
@@ -590,8 +580,16 @@ contains
   impure elemental subroutine clear(this)
     class(FHASH_TYPE_NAME), intent(inout) :: this
 
+    integer :: i
+
     this%n_keys = 0
-    if (associated(this%buckets)) deallocate(this%buckets)
+    if (associated(this%buckets)) then
+      do i = 1, size(this%buckets)
+        call clear_children(this%buckets(i))
+        if (allocated(this%buckets(i)%kv)) deallocate(this%buckets(i)%kv)
+      enddo
+      deallocate(this%buckets)
+    endif
   end subroutine
 
 #ifdef _FINAL_IS_IMPLEMENTED
@@ -601,6 +599,22 @@ contains
     call this%clear()
   end subroutine
 #endif
+
+  subroutine clear_children(node)
+    ! Not a recursive subroutine, because (i) this is much more performant, and
+    ! (ii) gfortran thinks that it cannot be both elemental and recursive.
+    _FINAL_TYPEORCLASS(node_type), intent(inout) :: node
+
+    type(node_type), pointer :: prev, next
+
+    next => node%next
+    do
+      if (.not. associated(next)) return
+      prev => next
+      next => prev%next
+      deallocate(prev)
+    enddo
+  end subroutine
 
   integer function key2bucket(this, key) result(bucket_id)
     class(FHASH_TYPE_NAME), intent(in) :: this
@@ -615,26 +629,6 @@ contains
 #endif
     bucket_id = modulo(hash, size(this%buckets)) + 1
   end function
-
-
-  subroutine clear_rank1_nodes(nodes)
-    _FINAL_TYPEORCLASS(node_type), intent(inout) :: nodes(:)
-
-    integer :: i
-
-    do i = 1, size(nodes)
-      call clear_scalar_node(nodes(i))
-    enddo
-  end subroutine
-
-  recursive subroutine clear_scalar_node(node)
-    _FINAL_TYPEORCLASS(node_type), intent(inout) :: node
-
-    if (associated(node%next)) then
-      call clear_scalar_node(node%next)
-      deallocate(node%next)
-    endif
-  end subroutine
 
   subroutine begin(this, fhash_target)
     class(FHASH_TYPE_ITERATOR_NAME), intent(inout) :: this

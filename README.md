@@ -18,40 +18,25 @@ and, optionally,
 
 ## Benchmarks
 
-Here are the benchmarks between my Fortran implementation and GCC 4.8 standard library:
+For
 
-For 14 integer array as the key, double precision floating point as the value, 10M entries:
+* key: integer array of size 2;
 
-Fortran hash:
+* value: double precision (64-bit) floating point;
 
-> Insert: 1.80 s
->
-> Clean: 1.70 s
->
-> 1.59 GB
+* 10M entries,
 
-GCC unordered_map:
+on
 
-> Insert: 2.02 s
-> 
-> Clean: 0.61 s
-> 
-> 1.38 GB
+* Intel(R) Core(TM) i7-6820HQ CPU @ 2.70GHz;
 
-For 2 integer array as the key, double precision floating point as the value, 20M entries:
+* Ubuntu 20.04.3 LTS,
 
-Fortran hash:
+I got
 
-> Insert: 2.66 s
-> 
-> Clean: 2.54 s
-> 
-> 2.57 GB
-
-GCC unordered_map:
-
-> Insert: 3.60 s
-> 
-> Clean: 1.07 s
-> 
-> 2.16 GB
+|           |               | ifort 2021 | gfortran 9 |
+|-----------|---------------|------------|------------|
+| *insert*  | **fhash**     | 2.99       | 2.38       |
+|           | **C++ (STL)** | 2.80       | 2.69       |
+| *clear*   | **fhash**     | 1.24       | 0.391      |
+|           | **C++ (STL)** | 0.37       | 0.328      |
