@@ -255,7 +255,7 @@ contains
   end function
 
   impure elemental subroutine reserve(this, n_buckets)
-    class(FHASH_TYPE_NAME), intent(inout) :: this
+    class(FHASH_TYPE_NAME), intent(out) :: this
     integer, intent(in) :: n_buckets
 
     integer :: i
@@ -263,12 +263,12 @@ contains
     & 28411, 57557, 116731, 236897, 480881, 976369,1982627, 4026031, &
     & 8175383, 16601593, 33712729, 68460391, 139022417, 282312799, &
     & 573292817, 1164186217, 2147483647]
+    integer, parameter :: n = size(sizes)
 
-    call assert(this%key_count() == 0, 'Cannot reserve when fhash is not empty.')
-    call assert(n_buckets >= 1, "I need at least one bucket.")
-    call assert(sizes(size(sizes)) >= n_buckets, "Did not expect to need this many buckets.")
+    call assert(sizes(2:) - sizes(:n-1) > 0, "PROGRAMMING ERROR: sizes should be strictly increasing")
+    call assert(sizes(n) >= n_buckets, "Did not expect to need this many buckets.")
 
-    do i = 1, size(sizes)
+    do i = 1, n
       if (sizes(i) >= n_buckets) then
         allocate(this%buckets(sizes(i)))
         exit
@@ -708,7 +708,7 @@ contains
     scalar_all = scal
   end function
 
-  subroutine assert(condition, msg)
+  impure elemental subroutine assert(condition, msg)
     use, intrinsic :: iso_fortran_env, only: error_unit
     logical, intent(in) :: condition
     character(*), intent(in) :: msg
