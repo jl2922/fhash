@@ -485,14 +485,15 @@ contains
 
   subroutine as_list(this, kv_list)
     class(FHASH_TYPE_NAME), target, intent(in) :: this
-    type(FHASH_TYPE_KV_TYPE_NAME), allocatable, intent(out) :: kv_list(:)
+    type(FHASH_TYPE_KV_TYPE_NAME), intent(out) :: kv_list(:)
 
     integer :: i, n
     type(FHASH_TYPE_ITERATOR_NAME) :: iter
     integer :: iter_stat
-
+    
     n = this%key_count()
-    allocate(kv_list(n))
+    call assert(size(kv_list) == n, "as_list: kv_list has a bad size")
+
     call iter%begin(this)
     do i = 1, n
       call iter%next(kv_list(i)%key, kv_list(i)%value, iter_stat)
@@ -502,7 +503,7 @@ contains
 
   subroutine as_sorted_list(this, kv_list, compare)
     class(FHASH_TYPE_NAME), target, intent(in) :: this
-    type(FHASH_TYPE_KV_TYPE_NAME), target, allocatable, intent(out) :: kv_list(:)
+    type(FHASH_TYPE_KV_TYPE_NAME), target, intent(out) :: kv_list(:)
     procedure(compare_keys_i) :: compare
 
     call this%as_list(kv_list)
