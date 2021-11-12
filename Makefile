@@ -39,7 +39,7 @@ test: fhash_modules fhash_test.f90
 benchmark: fhash_benchmark.out stl_benchmark.out
 	./fhash_benchmark.out  &&  ./stl_benchmark.out
 
-fhash_benchmark.out: fhash_modules.f90 benchmark.f90
+fhash_benchmark.out: fhash.f90 fhash_modules.f90 benchmark.f90
 	$(FC) $(FFLAGS_BASIC) $(FFLAGS_RELEASE) fhash_modules.f90 benchmark.f90 -o fhash_benchmark.out
 
 stl_benchmark.out: benchmark.cc
