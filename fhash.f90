@@ -519,10 +519,49 @@ contains
     global_compare_ptr => compare
     global_sorted_kv_list_ptr => kv_list
 
-    kv_list = kv_list(sorting_perm())
-    
+    call permute(kv_list, sorting_perm())
+
     global_compare_ptr => null()
     global_sorted_kv_list_ptr => null()
+  end subroutine
+
+  subroutine permute(x, perm)
+    ! Performs
+    !     x = x(perm)
+    ! but (i) this is more efficient, and (ii) ifort appears to put `x(perm)` on
+    ! the stack before copying, causing a segfault for large arrays.
+    use, intrinsic :: iso_c_binding, only: c_int
+    use, intrinsic :: iso_fortran_env, only: int8, int16
+
+    type(FHASH_TYPE_KV_TYPE_NAME), intent(inout) :: x(:)
+    integer(c_int), intent(in) :: perm(:)
+
+    type(FHASH_TYPE_KV_TYPE_NAME) :: temp
+    integer :: i, n, j, jnew
+    integer, parameter :: smallest_int = merge(int8, int16, int8 > 0)
+    logical(smallest_int), allocatable :: done(:)
+
+    call assert(size(x) ==  size(perm), "INTERNAL ERROR: permute: inconsistent sizes")
+    n = size(x)
+
+    allocate(done(n))
+    done = .false._smallest_int
+    do i = 1, n
+      ! Follow the permutations, which form a cycle:
+      j = i
+      temp = x(i)
+      do
+        if (done(j)) exit
+        jnew = perm(j)
+        if (jnew == i) then
+          x(j) = temp
+        else
+          x(j) = x(jnew)
+        endif
+        done(j) = .true._smallest_int
+        j = jnew
+      enddo
+    enddo
   end subroutine
 
   impure elemental subroutine deepcopy_fhash(lhs, rhs)
@@ -727,13 +766,12 @@ contains
                                               global_sorted_kv_list_ptr(f_b)%key), kind=c_int)
   end function
 
-  function sorting_perm() result(f_perm)
+  function sorting_perm() result(perm)
     use, intrinsic :: iso_c_binding
 
-    integer, allocatable :: f_perm(:)
+    integer(c_int), allocatable, target :: perm(:)
 
     integer(c_int) :: i, n
-    integer(c_int), allocatable, target :: perm(:)
     type(c_funptr) :: fun
     interface
       subroutine c_qsort(array, elem_count, elem_size, compare) bind(C, name="qsort")
@@ -752,10 +790,12 @@ contains
         "internal error: global sorting state has not been set yet")
 
     n = size(global_sorted_kv_list_ptr, kind=c_int)
-    perm = [(i, i = 1_c_int, n)]
+    allocate(perm(n))
+    do i = 1, n
+      perm(i) = i
+    enddo
     fun = c_funloc(__COMPARE_AT_IDX)
     if (n > 0_c_int) call c_qsort(c_loc(perm(1)), int(n, kind=c_size_t), c_sizeof(perm(1)), fun)
-    f_perm = int(perm)
   end function
 end module
 

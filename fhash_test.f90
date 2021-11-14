@@ -41,6 +41,39 @@ contains
     call assert(kv_list(2:)%key - kv_list(:size(kv_list)-1)%key > 0, "sorted list should be strictly increasing")
   end subroutine
 
+  subroutine test_large_sort()
+    ! Test with an array that's too big for the stack.
+    use i2char_mod
+
+    real, parameter :: gigabytes = 0.001 ! make larger for expensive test
+    type(i2char_kv_t), allocatable :: kv_list(:)
+    integer, parameter :: max = 1000
+    integer :: i, n, val
+    real :: x
+
+    n = nint(gigabytes * 1024**3 / (storage_size(kv_list) / 8))
+
+    ! This list contains duplicate keys, which is not possible for lists
+    ! obtained from a hash, but it should work anyway:
+    allocate(kv_list(n))
+    do i = 1, n
+      call random_number(x)
+      val = nint(x * max)
+      kv_list(i)%key = val
+      write(kv_list(i)%value, "(i0)") val
+    enddo
+
+    call sort_i2char(kv_list, compare_ints)
+
+    do i = 2, n
+      call assert(kv_list(i-1)%key <= kv_list(i)%key, "large sort: list should be increasing")
+    enddo
+    do i = 2, n
+      read(kv_list(i)%value, *) val
+      call assert(val == kv_list(i)%key, "large sort: bad value")
+    enddo
+  end subroutine
+
   subroutine test_get_ptr()
     use i2char_mod
 
@@ -202,6 +235,7 @@ program fhash_test
   call test_insert_get_and_remove_int_ints_ptr()
   call test_iterate()
   call test_as_list()
+  call test_large_sort()
   call test_deep_storage_size()
   call test_assignment()
 
