@@ -311,7 +311,8 @@ program fhash_test
   subroutine test_insert_get_and_remove_int_ints_ptr()
     type(int_ints_ptr_t) :: h
     integer, parameter ::  num_values = 50
-    type(ints_type), pointer :: pValues(:), pValue
+    type(ints_type), pointer :: pValue
+    type(ints_type), target, allocatable :: pValues(:)
     logical :: success
     integer ::  i, key, status
     type(int_ints_ptr_iter_t) :: it
@@ -324,9 +325,9 @@ program fhash_test
     
     ! add
     do i = 1, num_values
+      allocate(pValues(i)%ints(2))
+      pValues(i)%ints(1) = i
       pValue => pValues(i)
-      allocate(pValue%ints(2))
-      pValue%ints(1) = i
       call h%set(i, pValue)
     end do
     
@@ -334,7 +335,6 @@ program fhash_test
 
     ! get
     do i = num_values, i, -1
-      nullify(pValue)
       call h%get(i, pValue, success)
       if (.not. success) stop 'expect a value for given key '
       if (pValue%ints(1) .ne. pValues(i)%ints(1)) stop 'expect different value for given key'
@@ -384,8 +384,6 @@ program fhash_test
 #endif
 
     call h%clear()
-    
-    deallocate(pValues)
   end subroutine  
   
   subroutine test_iterate()
