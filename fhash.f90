@@ -429,27 +429,28 @@ contains
 
     integer :: bucket_id
     logical ::  locSuccess
+    type(node_type), pointer :: first, temp
     
     call assert(associated(this%buckets), "remove: fhash has not been initialized")
 
     bucket_id = this%key2bucket(key)
-    associate(first => this%buckets(bucket_id))
-      if (.not. allocated(first%kv)) then
-        locSuccess = .false.
-      elseif (.not. keys_equal(first%kv%key, key)) then
-        call node_remove(first, key, locSuccess)
-      elseif (associated(first%next)) then
-        first%kv%key =  first%next%kv%key
-        first%kv%value VALUE_ASSIGNMENT this%buckets(bucket_id)%next%kv%value
-        deallocate(first%next%kv)
-        first%next => first%next%next
-        locSuccess = .true.
-      else
-        deallocate(first%kv)
-        locSuccess = .true.
-      endif
-    end associate
-    
+    first => this%buckets(bucket_id)
+
+    if (.not. allocated(first%kv)) then
+      locSuccess = .false.
+    elseif (.not. keys_equal(first%kv%key, key)) then
+      call node_remove(first, key, locSuccess)
+    elseif (associated(first%next)) then
+      call move_alloc(first%next%kv, first%kv)
+      temp => first%next
+      first%next => first%next%next
+      deallocate(temp)
+      locSuccess = .true.
+    else
+      deallocate(first%kv)
+      locSuccess = .true.
+    endif
+
     if (locSuccess) this%n_keys = this%n_keys - 1
     if (present(success)) success = locSuccess
   end subroutine
