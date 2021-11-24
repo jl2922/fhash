@@ -332,10 +332,10 @@ contains
     else if (keys_equal(this%kv%key, key)) then
       value VALUE_ASSIGNMENT this%kv%value
       if (present(success)) success = .true.
-    else if (associated(this%next)) then
+    elseif (.not. associated(this%next)) then
+      if (present(success)) success = .false.
+    else
       call node_get(this%next, key, value, success)
-    elseif (present(success)) then
-      success = .false.
     endif
   end subroutine
   
