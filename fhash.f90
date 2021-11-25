@@ -475,7 +475,6 @@ contains
       success = .false.
     else if (keys_equal(next%kv%key, key)) then
       last%next => next%next
-      nullify(next%next)
       deallocate(next%kv)
       success = .true.
     else if (.not. associated(next%next)) then
