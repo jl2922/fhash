@@ -93,15 +93,6 @@ module FHASH_MODULE_NAME
     type(node_type), pointer :: next => null()
 
     contains
-      ! If kv is not allocated, fail and return
-      ! If key is present and node is first in bucket, set first node in bucket to
-      !   the next node of first. Return success
-      ! If key is present and the node is another member of the linked list, link the
-      !   previous node's next node to this node's next node, deallocate this node,
-      !   return success
-      ! Otherwise, fail and return 0
-      procedure, non_overridable :: node_remove
-      
       ! Return the length of the linked list start from the current node.
       procedure, non_overridable :: node_depth
 
@@ -341,10 +332,10 @@ contains
     else if (keys_equal(this%kv%key, key)) then
       value VALUE_ASSIGNMENT this%kv%value
       if (present(success)) success = .true.
-    else if (associated(this%next)) then
+    elseif (.not. associated(this%next)) then
+      if (present(success)) success = .false.
+    else
       call node_get(this%next, key, value, success)
-    elseif (present(success)) then
-      success = .false.
     endif
   end subroutine
   
@@ -438,48 +429,58 @@ contains
 
     integer :: bucket_id
     logical ::  locSuccess
+    type(node_type), pointer :: first, temp
     
     call assert(associated(this%buckets), "remove: fhash has not been initialized")
 
     bucket_id = this%key2bucket(key)
-    associate(first => this%buckets(bucket_id))
-      if (.not. allocated(first%kv)) then
-        locSuccess = .false.
-      elseif (.not. keys_equal(first%kv%key, key)) then
-        call node_remove(first%next, key, locSuccess, first)
-      elseif (associated(first%next)) then
-        first%kv%key =  first%next%kv%key
-        first%kv%value VALUE_ASSIGNMENT this%buckets(bucket_id)%next%kv%value
-        deallocate(first%next%kv)
-        first%next => first%next%next
-        locSuccess = .true.
-      else
-        deallocate(first%kv)
-        locSuccess = .true.
-      endif
-    end associate
-    
+    first => this%buckets(bucket_id)
+
+    if (.not. allocated(first%kv)) then
+      locSuccess = .false.
+    elseif (.not. keys_equal(first%kv%key, key)) then
+      call node_remove(first, key, locSuccess)
+    elseif (associated(first%next)) then
+      call move_alloc(first%next%kv, first%kv)
+      temp => first%next
+      first%next => first%next%next
+      deallocate(temp)
+      locSuccess = .true.
+    else
+      deallocate(first%kv)
+      locSuccess = .true.
+    endif
+
     if (locSuccess) this%n_keys = this%n_keys - 1
     if (present(success)) success = locSuccess
   end subroutine
 
-  recursive subroutine node_remove(this, key, success, last)
-    class(node_type), intent(inout) :: this, last
+  recursive subroutine node_remove(last, key, success)
+    ! If kv is not allocated, fail and return
+    ! If key is present and node is first in bucket, set first node in bucket to
+    !   the next node of first. Return success
+    ! If key is present and the node is another member of the linked list, link the
+    !   previous node's next node to this node's next node, deallocate this node,
+    !   return success
+    ! Otherwise, fail and return 0
+    type(node_type), intent(inout) :: last
     KEY_TYPE, intent(in) :: key
     logical, intent(out) :: success
     
-    if (.not. allocated(this%kv)) then
-      ! Not found. (Initial node in the bucket not set)
+    type(node_type), pointer :: next
+
+    next => last%next
+
+    if (.not. allocated(next%kv)) then
       success = .false.
-    else if (keys_equal(this%kv%key, key)) then
-      last%next => this%next
-      nullify(this%next)
-      deallocate(this%kv)
+    else if (keys_equal(next%kv%key, key)) then
+      last%next => next%next
+      deallocate(next%kv)
       success = .true.
-    else if (associated(this%next)) then
-      call this%next%node_remove(key, success, this)
-    else
+    else if (.not. associated(next%next)) then
       success = .false.
+    else
+      call node_remove(next, key, success)
     endif
   end subroutine
 
