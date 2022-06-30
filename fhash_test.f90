@@ -1,54 +1,264 @@
+module tests_mod
+  use ints_module
+  use ints_double_mod
+  use, intrinsic :: iso_fortran_env
+  implicit none
+
+contains
+  subroutine test_as_list
+    use i2char_mod
+
+    type(i2char_t) :: h
+    character(10) :: val
+    integer :: i
+    integer, parameter :: n_uniq = 4
+    type(i2char_kv_t) :: kv_list(n_uniq)
+    logical :: success
+
+    call h%reserve(3)
+    call h%set(1, "one (typo)")
+    call h%set(1, "one       ")
+    call h%set(0, "zero      ")
+    call h%set(4, "four      ")
+    call h%set(7, "seven     ")
+    call assert(h%get_ptr(1) == "one", 'expected  h%get_ptr(1) == "one"')
+    
+    call h%as_list(kv_list)
+    call assert(size(kv_list) == n_uniq, "kv_list has bad size")
+    do i = 1, n_uniq
+      call h%get(kv_list(i)%key, val, success)
+      call assert(success, "key in list was not in hash")
+      call assert(val == kv_list(i)%value, "bad value in list")
+    enddo
+
+    call h%as_sorted_list(kv_list, compare_ints)
+    call assert(size(kv_list) == n_uniq, "sorted kv_list has bad size")
+    do i = 1, n_uniq
+      call h%get(kv_list(i)%key, val, success)
+      call assert(success, "key in sorted list was not in hash")
+      call assert(val == kv_list(i)%value, "bad value in sorted list")
+    enddo
+    call assert(kv_list(2:)%key - kv_list(:size(kv_list)-1)%key > 0, "sorted list should be strictly increasing")
+  end subroutine
+
+  subroutine test_large_sort()
+    ! Test with an array that's too big for the stack.
+    use i2char_mod
+
+    real, parameter :: gigabytes = 0.001 ! make larger for expensive test
+    type(i2char_kv_t), allocatable :: kv_list(:)
+    integer, parameter :: max = 1000
+    integer :: i, n, val
+    real :: x
+
+    n = nint(gigabytes * 1024**3 / (storage_size(kv_list) / 8))
+
+    ! This list contains duplicate keys, which is not possible for lists
+    ! obtained from a hash, but it should work anyway:
+    allocate(kv_list(n))
+    do i = 1, n
+      call random_number(x)
+      val = nint(x * max)
+      kv_list(i)%key = val
+      write(kv_list(i)%value, "(i0)") val
+    enddo
+
+    call sort_i2char(kv_list, compare_ints)
+
+    do i = 2, n
+      call assert(kv_list(i-1)%key <= kv_list(i)%key, "large sort: list should be increasing")
+    enddo
+    do i = 2, n
+      read(kv_list(i)%value, *) val
+      call assert(val == kv_list(i)%key, "large sort: bad value")
+    enddo
+  end subroutine
+
+  subroutine test_get_ptr()
+    use i2char_mod
+
+    type(i2char_t) :: h
+    character(:), pointer :: c
+    type(i2char_kv_t), allocatable :: kv_list(:)
+    integer :: i
+
+    call h%reserve(1)
+    
+    call h%set(7, "seven     ")
+
+    c => h%get_ptr(0)
+    call assert(.not. associated(c), "expected .not. associated(c)")
+    c => h%get_ptr(1)
+    call assert(.not. associated(c), "expected .not. associated(c)")
+    c => h%get_ptr(7)
+    call assert(associated(c), "expected associated(c)")
+    call assert(c == "seven", "exptected c == 'seven'")
+    
+    c(:) = 'new seven'
+    c => h%get_ptr(7)
+    call assert(associated(c), "expected associated(c)")
+    call assert(c == 'new seven', "expected c == 'new seven'")
+
+    do i = 1, 3
+      c => h%get_ptr(2, autoval='auto two  ')
+      call assert(associated(c), "expected associated(c)")
+      call assert(c == 'auto two', "expected c == 'auto two'")
+      call assert(h%key_count() == 2, 'expected two keys in h')
+    enddo
+
+    allocate(kv_list(h%key_count()))
+    call h%as_sorted_list(kv_list, compare_ints)
+    call assert(size(kv_list) == 2, "expected size(kv_list) == 2")
+    call assert(kv_list%key == [2, 7], "keys should be [2, 7]")
+    call assert(kv_list%value == ['auto two ', 'new seven'], "test_get_ptr: bad values")
+  end subroutine
+
+  integer function compare_ints(a, b)
+    integer, intent(in) :: a, b
+
+    compare_ints = a - b
+  end function
+
+  subroutine test_deep_storage_size()
+    type(ints_double_t) :: h
+    type(ints_type) :: key
+    
+    integer :: i
+    integer :: s
+
+    s = h%deep_storage_size(0123)
+    
+    call h%reserve(10)
+    allocate(key%ints(2))
+    
+    do i = 1, 3
+      key%ints = i
+      call h%set(key, real(i, kind=real64))
+    enddo
+    s = h%deep_storage_size(0123)
+    
+    do i = 1, 20
+      key%ints = i
+      call h%set(key, real(i, kind=real64))
+    enddo
+    s = h%deep_storage_size(0123)
+  end subroutine
+
+  subroutine test_assignment()
+    type(ints_double_t) :: a, b, c
+    type(ints_type) :: keys(100)
+    real(real64) :: values(size(keys))
+
+    integer :: i
+
+    do i = 1, size(keys)
+      allocate(keys(i)%ints(3))
+      keys(i)%ints = i
+      values(i) = i
+    enddo
+
+    call a%reserve(10)
+    do i = 1, size(keys)
+      call a%set(keys(i), values(i))
+    enddo
+    call check_kv(a)
+
+    c = a
+    call check_kv(a)
+    call check_kv(c)
+    
+    call b%reserve(1)
+    b = a
+    call check_kv(a)
+    call check_kv(b)
+    call a%clear()
+    call check_kv(b)
+
+    a = b
+    call check_kv(a)
+    call check_kv(b)
+    call a%clear()
+    call check_kv(b)
+  contains
+      subroutine check_kv(fhash)
+        type(ints_double_t), intent(in) :: fhash
+
+        type(ints_double_iter_t) :: iter
+        type(ints_type) :: key
+        real(real64) :: val
+        integer :: i
+        integer :: status
+        logical :: have_seen(size(keys))
+
+        have_seen = .false.
+        call iter%begin(fhash)
+        do
+          call iter%next(key, val, status)
+          if (status /= 0) exit
+
+          i = nint(val)
+          call assert(abs(val - i) <= 10*epsilon(val), "check_kv: bad value")
+          call assert(key%ints == i, "check_kv: bad key")
+          call assert(.not. have_seen(i), "check_kv: found the same key twice")
+          have_seen(i) = .true.
+        enddo
+        call assert(all(have_seen), "check_kv: did not get all keys from the iterator")
+      end subroutine
+  end subroutine
+
+  impure elemental subroutine assert(condition, msg)
+    use, intrinsic :: iso_fortran_env, only: error_unit
+    logical, intent(in) :: condition
+    character(*), intent(in) :: msg
+
+    if (.not. condition) then
+      write(error_unit, '(a)') "FAILED A TEST: " // msg
+      error stop
+    endif
+  end subroutine
+end module
+
 program fhash_test
 
   use, intrinsic :: iso_fortran_env
-  use fhash_module__ints_double
-  use fhash_module__int_ints_ptr
+  use ints_double_mod
+  use int_ints_ptr_mod
   use ints_module
-
+  use tests_mod
   implicit none
 
-  real :: start, finish
-  integer :: numKeys
-
+  call test_get_ptr()
   call test_contructor()
   call test_reserve()
   call test_insert_and_get_ints_double()
   call test_insert_and_get_int_ints_ptr()
   call test_insert_get_and_remove_int_ints_ptr()
   call test_iterate()
+  call test_as_list()
+  call test_large_sort()
+  call test_deep_storage_size()
+  call test_assignment()
 
   print *, 'ALL TESTS PASSED.'
-  print *, 'Start benchmark:'
-
-  ! Benchmark
-  numKeys = 10000000
-#ifdef __GFORTRAN__
-  if (__SIZEOF_POINTER__ == 8) numKeys = numKeys * 2
-#else
-  if (int_ptr_kind() == 8) numKeys = numKeys * 2
-#endif
-  call cpu_time(start)
-  call benchmark(2, numKeys)
-  call cpu_time(finish)
-  print '("Time finish = ", G0.3," seconds.")', finish - start
-
   contains
 
   subroutine test_contructor()
-    type(fhash_type__ints_double) h
+    type(ints_double_t) h
     if (h%key_count() /= 0) stop 'expect no keys'
   end subroutine
 
   subroutine test_reserve()
-    type(fhash_type__ints_double) h
+    type(ints_double_t) :: h
+
     call h%reserve(3)
-    if (h%bucket_count() /= 5) stop 'expect to reserve 5 buckets'
+    call assert(h%bucket_count() == 5, 'expected to reserve 5 buckets')
   end subroutine
 
   subroutine test_insert_and_get_ints_double()
-    type(fhash_type__ints_double) :: h
+    type(ints_double_t) :: h
     type(ints_type) :: key
     real(real64) :: value
+    real(real64), pointer :: val_ptr
     integer :: i
     logical :: success
     call h%reserve(5)
@@ -57,11 +267,20 @@ program fhash_test
     key%ints = 0
     do i = 1, 10
       key%ints(i) = i
+
       call h%get(key, value, success)
       if (success) stop 'expect not found'
+
+      val_ptr => h%get_ptr(key)
+      call assert(.not. associated(val_ptr), "expected a null pointer")
+
       call h%set(key, i * 0.5_real64)
       call h%get(key, value)
       if (abs(value - i * 0.5_real64) > epsilon(value)) stop 'expect to get 0.5 i'
+
+      val_ptr => h%get_ptr(key)
+      call assert(associated(val_ptr), "expected a, associated pointer")
+      call assert(abs(val_ptr - i * 0.5_real64) <= epsilon(val_ptr), 'expect to get pointer value of 0.5 i')
     enddo
     if (h%key_count() /= 10) stop 'expect key count to be 10'
     if (h%n_collisions() >= 10 .or. h%n_collisions() < 5) stop 'expect n_collisions in [5, 10)'
@@ -72,7 +291,7 @@ program fhash_test
   end subroutine
 
   subroutine test_insert_and_get_int_ints_ptr()
-    type(fhash_type__int_ints_ptr) :: h
+    type(int_ints_ptr_t) :: h
     type(ints_type), target :: value
     type(ints_type), pointer :: value_ptr, value_ptr2, value_ptr3
     logical :: success
@@ -90,12 +309,13 @@ program fhash_test
   end subroutine
 
   subroutine test_insert_get_and_remove_int_ints_ptr()
-    type(fhash_type__int_ints_ptr) :: h
+    type(int_ints_ptr_t) :: h
     integer, parameter ::  num_values = 50
-    type(ints_type), pointer :: pValues(:), pValue
+    type(ints_type), pointer :: pValue
+    type(ints_type), target, allocatable :: pValues(:)
     logical :: success
     integer ::  i, key, status
-    type(fhash_type_iterator__int_ints_ptr) :: it
+    type(int_ints_ptr_iter_t) :: it
     
     ! prepare
     allocate(pValues(num_values))
@@ -105,9 +325,9 @@ program fhash_test
     
     ! add
     do i = 1, num_values
+      allocate(pValues(i)%ints(2))
+      pValues(i)%ints(1) = i
       pValue => pValues(i)
-      allocate(pValue%ints(2))
-      pValue%ints(1) = i
       call h%set(i, pValue)
     end do
     
@@ -115,7 +335,6 @@ program fhash_test
 
     ! get
     do i = num_values, i, -1
-      nullify(pValue)
       call h%get(i, pValue, success)
       if (.not. success) stop 'expect a value for given key '
       if (pValue%ints(1) .ne. pValues(i)%ints(1)) stop 'expect different value for given key'
@@ -165,14 +384,11 @@ program fhash_test
 #endif
 
     call h%clear()
-    
-    deallocate(pValues)
-    
   end subroutine  
   
   subroutine test_iterate()
-    type(fhash_type__ints_double) :: h
-    type(fhash_type_iterator__ints_double) :: it
+    type(ints_double_t) :: h
+    type(ints_double_iter_t) :: it
     type(ints_type) :: key
     real(real64) :: value
     integer :: i, j
@@ -217,28 +433,4 @@ program fhash_test
     
     call h%clear()
   end subroutine
-
-  subroutine benchmark(n_ints, n_keys)
-    integer, intent(in) :: n_ints, n_keys
-    type(fhash_type__ints_double) :: h
-    type(ints_type) :: key
-    real :: start, finish
-    integer :: i, j
-
-    print '("n_ints: ", I0, ", n_keys: ", I0)', n_ints, n_keys
-
-    call cpu_time(start)
-    call h%reserve(n_keys * 2)
-    allocate(key%ints(n_ints))
-    do i = 1, n_keys
-      do j = 1, n_ints
-        key%ints(j) = i + j
-      enddo
-      call h%set(key, (i + j) * 0.5_real64)
-    enddo
-    call cpu_time(finish)
-    print '("Time insert = ", G0.3," seconds.")', finish - start
-    call h%clear()
-  end subroutine
-
 end program
