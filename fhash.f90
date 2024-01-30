@@ -392,7 +392,12 @@ module FHASH_MODULE_NAME
     VALUE_TYPE, intent(out) :: value
     integer, optional, intent(out) :: status
 
-    do while (.not. associated(this%node_ptr) .or. .not. allocated(this%node_ptr%kv))
+    do
+    
+      IF(ASSOCIATED(this%node_ptr)) THEN
+        IF(ALLOCATED(this%node_ptr%kv) ) EXIT
+      END IF
+      
       if (this%bucket_id < this%fhash_ptr%n_buckets) then
         this%bucket_id = this%bucket_id + 1
         this%node_ptr => this%fhash_ptr%buckets(this%bucket_id)
